@@ -1,0 +1,27 @@
+{
+  "name": "twoclubs-common",
+  "version": "0.0.1",
+  "description": "TwoClubs common",
+  "main": "main.js",
+  "module": "main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kduffie/twoclubs-common.git"
+  },
+  "author": "Kingston Duffie <kingston.duffie@gmail.com> (http://slickstream.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kduffie/twoclubs-common/issues"
+  },
+  "homepage": "https://twoclubs.com",
+  "dependencies": {
+    "shuffle-array": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^16.3.3",
+    "@types/shuffle-array": "^1.0.2"
+  }
+}

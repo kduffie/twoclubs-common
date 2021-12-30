@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "module": "commonjs",
+    "target": "es6",
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "src/types/*",
+        "types_added/*"
+      ]
+    },
+    "downlevelIteration": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types_added"
+    ],
+    "strict": true,
+    "rootDir": "src",
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "es6"
+    ]
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "experimentalDecorators": true,
+  "forceConsistentCasingInFileNames": true,
+  "noFallthroughCasesInSwitch": true,
+  "noImplicitReturns": true,
+  "noImplicitThis": true,
+  "noUnusedLocals": true,
+  "pretty": true
+}

@@ -1,0 +1,22 @@
+{
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.renderIndentGuides": true,
+  "editor.formatOnSave": true,
+  "editor.minimap.enabled": false,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/dist": true,
+    "**/bin": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": false
+  },
+  "debug.toolBarLocation": "docked",
+  "editor.codeLens": true,
+  "typescript.referencesCodeLens.enabled": true,
+  "typescript.implementationsCodeLens.enabled": true,
+  "files.autoSave": "afterDelay"
+}
