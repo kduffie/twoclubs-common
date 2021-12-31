@@ -1,7 +1,10 @@
+import { Player } from "./player";
+
 export type Seat = 'N' | 'E' | 'S' | 'W';
 export const SEATS: Seat[] = ['N', 'E', 'S', 'W'];
 export type Partnership = 'NS' | 'EW';
 export type Vulnerability = Partnership | 'none' | 'both';
+export const VULNERABILITIES: Vulnerability[] = ['NS', 'EW', 'none', 'both'];
 
 export type CardRank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'T' | 'J' | 'Q' | 'K' | 'A';
 export const CARD_RANKS: CardRank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
@@ -21,6 +24,8 @@ export const TRICKS_PER_BOARD = 13;
 export type SlamType = 'none' | 'small' | 'grand';
 
 export const INSULT_BONUS = 50;
+
+export type PlayerFactory = (seat: Seat) => Player;
 
 export function getPartnerSeat(seat: Seat): Seat {
   switch (seat) {
@@ -62,5 +67,25 @@ export function getPartnershipBySeat(seat: Seat): Partnership {
       return 'EW';
     default:
       throw new Error("Unexpected seat " + seat);
+  }
+}
+
+export function union<T>(set1: Set<T>, set2: Set<T>): Set<T> {
+  const result = new Set<T>();
+  for (const value of set1) {
+    result.add(value);
+  }
+  for (const value of set2) {
+    result.add(value);
+  }
+  return result;
+}
+
+export function getSeatsByPartnership(partnership: Partnership): Seat[] {
+  switch (partnership) {
+    case 'NS':
+      return ['N', 'S'];
+    case 'EW':
+      return ['E', 'W'];
   }
 }

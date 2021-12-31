@@ -8,7 +8,6 @@ import { Contract } from "./contract";
 import { Bid } from "./bid";
 import { Trick } from "./trick";
 import { Play } from "./play";
-import { threadId } from "worker_threads";
 
 export class Board {
   private _number: number;
@@ -23,12 +22,12 @@ export class Board {
   private _declarerTricks = 0;
   private _defenseTricks = 0;
 
-  constructor(boardNumber: number, vulnerability: Vulnerability, dealer: Seat, hands: Map<Seat, Hand>) {
+  private constructor(boardNumber: number, vulnerability: Vulnerability, dealer: Seat, hands: Map<Seat, Hand>) {
     this._number = Math.floor(boardNumber);
     this._vulnerability = vulnerability;
     this._dealer = dealer;
     this._nextExpectedBidder = dealer;
-    assert(hands.size === SEATS.length);
+    assert(hands.size === 4);
     this._handsBySeat = hands;
   }
 
@@ -96,8 +95,10 @@ export class Board {
       const lastTrick = this.tricks[this.tricks.length - 1];
       if (lastTrick.winner) {
         return lastTrick.winner.by;
+      } else if (lastTrick.plays.length > 0) {
+        return lastTrick.getNextPlayer()
       } else {
-        return getFollowingSeat(lastTrick.getNextPlayer());
+        return getFollowingSeat(this.contract.declarer);
       }
     }
   }
@@ -122,7 +123,7 @@ export class Board {
         if (lastNormal) {
           const declarer = this.getDeclarer(lastNormal);
           const partnership = getPartnershipBySeat(declarer);
-          this._contract = new Contract(declarer, lastNormal.count, lastNormal.strain, this.isVulnerable(partnership), lastDouble);
+          this._contract = new Contract(declarer, lastNormal.count, lastNormal.strain, this.isPartnershipVulnerable(partnership), lastDouble);
         } else {
           this._passedOut = true;
         }
@@ -132,7 +133,11 @@ export class Board {
     return true;
   }
 
-  private isVulnerable(partnership: Partnership): boolean {
+  setContract(contract: Contract): void {
+    this._contract = contract;
+  }
+
+  isPartnershipVulnerable(partnership: Partnership): boolean {
     switch (this.vulnerability) {
       case 'none':
         return false;
@@ -145,7 +150,32 @@ export class Board {
     }
   }
 
-  play(p: Play): Trick {
+  private isPlayerVulnerable(seat: Seat): boolean {
+    switch (this.vulnerability) {
+      case 'none':
+        return false;
+      case 'both':
+        return true;
+      case 'NS':
+        return ['N', 'S'].indexOf(seat) >= 0;
+      case 'EW':
+        return ['E', 'W'].indexOf(seat) >= 0;
+    }
+  }
+
+  getCurrentTrick(): Trick | null {
+    assert(this.contract);
+    if (this.tricks.length === TRICKS_PER_BOARD && this.tricks[this.tricks.length - 1].winner) {
+      return null;
+    }
+    if (this.tricks.length === 0 || this.tricks[this.tricks.length - 1].winner) {
+      const t = new Trick(this);
+      this.tricks.push(t);
+    }
+    return this.tricks[this.tricks.length - 1];
+  }
+
+  playCard(p: Play): void {
     assert(this.contract);
     const nextPlayer = this.getNextPlayer();
     if (!nextPlayer) {
@@ -157,6 +187,9 @@ export class Board {
     if (this.tricks.length === 0 || this.tricks[this.tricks.length - 1].winner) {
       this._tricks.push(new Trick(this));
     }
+    const hand = this.getHand(p.by);
+    assert(hand);
+    hand.playCard(p.card);
     const trick = this.tricks[this.tricks.length - 1];
     trick.playCard(p);
     if (trick.winner) {
@@ -166,11 +199,12 @@ export class Board {
         this._defenseTricks++;
       }
     }
-    return this.tricks[this.tricks.length - 1];
   }
 
   getDeclarerScore(): number {
-    assert(this.contract && this.tricks.length === TRICKS_PER_BOARD && this.tricks[this.tricks.length - 1].winner);
+    if (!this.contract || this.tricks.length !== TRICKS_PER_BOARD || !this.tricks[this.tricks.length - 1].winner) {
+      return 0;
+    }
     if (this.declarerTricks >= this.contract.count + 6) {
       let result = this.contract.getAdditionalTrickScore() + this.contract.count * this.contract.getPerTrickScore();
       const overtricks = this.declarerTricks - (this.contract.count + 6);
@@ -226,4 +260,23 @@ export class Board {
     throw new Error("Unexpectedly did not find suitable first bid");
   }
 
+  toString(): string {
+    const result: string[] = [];
+    result.push(`Board ${this._number} VUL:${this._vulnerability} Dealer:${this._dealer}`);
+    result.push(`  Hands: North: ${this._handsBySeat.get('N')!.toString()}  South: ${this._handsBySeat.get('S')!.toString()}`);
+    result.push(`         East:  ${this._handsBySeat.get('E')!.toString()}  West:  ${this._handsBySeat.get('W')!.toString()}`);
+    if (this._contract) {
+      result.push(`  Contract: ${this._contract.toString()}`);
+    } else if (this._passedOut) {
+      result.push(`  Passed out`);
+    }
+    if (this._declarerTricks + this._defenseTricks > 0) {
+      result.push(`  Tricks:  Declarer:${this._declarerTricks}  Defense:${this._defenseTricks}`);
+    }
+    const score = this.getDeclarerScore();
+    if (score !== 0) {
+      result.push(`  Score: ${score}`);
+    }
+    return result.join('\n');
+  }
 }

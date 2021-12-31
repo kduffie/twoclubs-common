@@ -5,7 +5,8 @@
   "main": "main.js",
   "module": "main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "run": "node --inspect dist/run/main.js"
   },
   "repository": {
     "type": "git",

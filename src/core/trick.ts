@@ -29,10 +29,10 @@ export class Trick {
   }
 
   playCard(play: Play): Play | null {
-    this.plays.push(play);
     if (this.plays.length > 0) {
       assert(play.by === getFollowingSeat(this.plays[this.plays.length - 1].by));
     }
+    this.plays.push(play);
     if (this.plays.length === SEATS.length) {
       return this.determineWinner();
     } else {
@@ -53,6 +53,7 @@ export class Trick {
         winningIndex = i;
       }
     }
-    return this.plays[winningIndex];
+    this._winningIndex = winningIndex;
+    return this.plays[this._winningIndex];
   }
 }

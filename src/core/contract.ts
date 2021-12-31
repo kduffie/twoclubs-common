@@ -156,4 +156,8 @@ export class Contract {
   get doubling(): Doubling {
     return this._doubling;
   }
+
+  toString(): string {
+    return `${this._count}${this._strain}${this.doubling === 'doubled' ? '*' : (this.doubling === 'redoubled' ? '**' : '')} by ${this._declarer} ${this._vulnerable ? 'VUL' : 'Non-VUL'}`;
+  }
 }
