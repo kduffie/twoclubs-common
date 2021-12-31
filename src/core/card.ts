@@ -1,4 +1,4 @@
-import { CardRank, CARD_RANKS, Suit, SUITS } from "./common";
+import { CardRank, CARD_RANKS, Strain, Suit, SUITS } from "./common";
 
 export class Card {
   private _rank: CardRank;
@@ -28,15 +28,18 @@ export class Card {
     return other.suit === this.suit && other.rank === this.rank;
   }
 
-  compareTo(other: Card): number {
-    if (other.rank === this.rank) {
-      if (other.suit === this.suit) {
-        return 0;
-      } else {
-        return SUITS.indexOf(this.suit) - SUITS.indexOf(other.suit);
-      }
+  toString(): string {
+    return `${this.rank}${this.suit}`;
+  }
+
+  isBetter(other: Card, trump: Strain): boolean {
+    if (other.suit === this.suit) {
+      return CARD_RANKS.indexOf(this.rank) > CARD_RANKS.indexOf(other.rank);
+    } else if (trump === 'N') {
+      return false;
     } else {
-      return CARD_RANKS.indexOf(this.rank) - CARD_RANKS.indexOf(this.rank);
+      return this.suit === trump;
     }
   }
+
 }

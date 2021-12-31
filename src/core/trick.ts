@@ -1,5 +1,5 @@
 import { Board } from "./board";
-import { getFollowingSeat, Seat, SEATS, Partnership, getPartnershipBySeat } from "./common";
+import { getFollowingSeat, Seat, SEATS, Partnership, getPartnershipBySeat, Suit } from "./common";
 import { Play } from "./play";
 import * as assert from 'assert';
 
@@ -40,20 +40,53 @@ export class Trick {
     }
   }
 
+  getLeadSuit(): Suit | null {
+    if (this.plays.length === 0) {
+      return null;
+    }
+    return this.plays[0].card.suit;
+  }
+
   getNextPlayer(): Seat {
     assert(this.plays.length > 0);
+    if (this.winner) {
+      return this.winner.by;
+    }
     return getFollowingSeat(this.plays[this.plays.length - 1].by);
   }
 
   private determineWinner(): Play {
     assert(this._board.contract);
+    assert(this.plays.length === SEATS.length);
     let winningIndex = 0;
-    for (let i = 1; i < SEATS.length; i++) {
-      if (this.plays[i].isBetter(this.plays[winningIndex].card, this._board.contract?.strain)) {
+    for (let i = 1; i < this.plays.length; i++) {
+      if (this.plays[i].card.isBetter(this.plays[winningIndex].card, this._board.contract.strain)) {
         winningIndex = i;
       }
     }
     this._winningIndex = winningIndex;
     return this.plays[this._winningIndex];
+  }
+
+  getCurrentBest(): Play | null {
+    assert(this._board.contract);
+    if (this.plays.length === 0) {
+      return null;
+    }
+    let bestIndex = 0;
+    for (let i = 1; i < this.plays.length; i++) {
+      if (this.plays[i].card.isBetter(this.plays[bestIndex].card, this._board.contract.strain)) {
+        bestIndex = i;
+      }
+    }
+    return this.plays[bestIndex];
+  }
+
+  toString(): string {
+    const result: string[] = [];
+    for (const p of this.plays) {
+      result.push(p.toString());
+    }
+    return result.join('  ') + (this._winningIndex >= 0 ? `   won by ${this.plays[this._winningIndex].by}` : '');
   }
 }

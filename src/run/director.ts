@@ -2,10 +2,11 @@ import { getFollowingSeat, getSeatsByPartnership, Partnership, PlayerFactory, Se
 import { Vulnerability } from "../core/common";
 import { Board } from "../core/board";
 import { Player } from "../core/player";
-import { TotalRandomPlayer } from "../robots/total-random-player";
 import * as assert from 'assert';
 import { Hand } from "../core/hand";
 import { Contract } from "../core/contract";
+import { CoveringPlayer } from "../robots/covering-player";
+import { TotalRandomPlayer } from "../robots/total-random-player";
 
 export class Director {
   private boardNumber = 1;
@@ -13,7 +14,7 @@ export class Director {
 
   constructor(playerFactory?: PlayerFactory) {
     if (!playerFactory) {
-      playerFactory = (seat: Seat) => new TotalRandomPlayer(seat);
+      playerFactory = (seat: Seat) => new CoveringPlayer(seat);
     }
     for (const seat of SEATS) {
       if (!this.players.get(seat)) {
@@ -22,13 +23,16 @@ export class Director {
     }
   }
 
+  seatPlayer(seat: Seat, player: Player): void {
+    this.players.set(seat, player);
+  }
+
   dealAndRunBoard(): Board {
     const board = Board.deal(this.boardNumber++, this.randomizeVulnerability(), this.randomizeSeat());
     this.assignAppropriateContract(board);
     assert(board.contract);
-    let seat = board.contract.declarer;
+    let seat = getFollowingSeat(board.contract.declarer);
     while (true) {
-      seat = getFollowingSeat(seat);
       const player = this.players.get(seat);
       assert(player);
       const trick = board.getCurrentTrick();
@@ -36,6 +40,11 @@ export class Director {
         break;
       }
       player.play(board, trick);
+      const next = board.getNextPlayer();
+      if (!next) {
+        break;
+      }
+      seat = next;
     }
     console.log(board.toString());
     return board;
@@ -74,7 +83,7 @@ export class Director {
     let count = 1;
     const partners = getSeatsByPartnership(partnership);
     let declarer = hand1.totalPoints >= hand2.totalPoints ? partners[0] : partners[1];
-    if (stoppedSuitsInSuit.size >= 3 && totalPoints >= 30 && longestFit >= 8) {
+    if (stoppedSuitsInSuit.size >= 3 && totalPoints >= 32 && totalHCP >= 30 && longestFit >= 8) {
       strain = bestFit;
       count = 6;
     } else if (stoppedSuitsInNT.size >= 4 && totalHCP >= 32) {

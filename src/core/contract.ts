@@ -43,18 +43,21 @@ export class Contract {
 
   getGameBonus(tricksMade: number): number {
     if (!this.isGameBonusApplicable()) {
-      return 0;
+      return 50;
     }
     let minCount = 6;
     switch (this._strain) {
       case 'C':
       case 'D':
         minCount += 5;
+        break;
       case 'H':
       case 'S':
         minCount += 4;
+        break;
       case 'N':
         minCount += 3;
+        break;
       default:
         throw new Error("Unexpected strain " + this._strain);
     }
@@ -158,6 +161,6 @@ export class Contract {
   }
 
   toString(): string {
-    return `${this._count}${this._strain}${this.doubling === 'doubled' ? '*' : (this.doubling === 'redoubled' ? '**' : '')} by ${this._declarer} ${this._vulnerable ? 'VUL' : 'Non-VUL'}`;
+    return `${this._count}${this._strain}${this.doubling === 'doubled' ? '*' : (this.doubling === 'redoubled' ? '**' : '')} by ${this._declarer} ${this._vulnerable ? 'VUL' : 'nonVUL'}`;
   }
 }

@@ -1,3 +1,4 @@
+import { Card } from "./card";
 import { Player } from "./player";
 
 export type Seat = 'N' | 'E' | 'S' | 'W';
@@ -88,4 +89,25 @@ export function getSeatsByPartnership(partnership: Partnership): Seat[] {
     case 'EW':
       return ['E', 'W'];
   }
+}
+
+export function getParnershipBySeat(seat: Seat): Partnership {
+  switch (seat) {
+    case 'N':
+    case 'S':
+      return 'NS';
+    case 'E':
+    case 'W':
+      return 'EW';
+  }
+}
+
+export function getCardsInSuit(cards: Card[], suit: Suit): Card[] {
+  const result: Card[] = [];
+  for (const c of cards) {
+    if (c.suit === suit) {
+      result.push(c);
+    }
+  }
+  return result;
 }

@@ -53,6 +53,10 @@ export class Board {
     return this._number;
   }
 
+  get passedOut(): boolean {
+    return this._passedOut;
+  }
+
   get vulnerability(): Vulnerability {
     return this._vulnerability;
   }
@@ -87,10 +91,12 @@ export class Board {
 
   getNextPlayer(): Seat | null {
     assert(this.contract);
-    if (this._tricks.length === 0) {
+    if (this._tricks.length === 0 || this._tricks.length === 1 && this.tricks[0].plays.length === 0) {
       return getFollowingSeat(this.contract.declarer);
     } else if (this.tricks.length === TRICKS_PER_BOARD && this.tricks[this.tricks.length - 1].winner) {
       return null;
+    } else if (this.tricks.length > 1 && this.tricks[this.tricks.length - 1].plays.length === 0) {
+      return this.tricks[this.tricks.length - 2].getNextPlayer();
     } else {
       const lastTrick = this.tricks[this.tricks.length - 1];
       if (lastTrick.winner) {
@@ -209,6 +215,7 @@ export class Board {
       let result = this.contract.getAdditionalTrickScore() + this.contract.count * this.contract.getPerTrickScore();
       const overtricks = this.declarerTricks - (this.contract.count + 6);
       result += this.contract.getOverTrickScore(overtricks);
+      result += this.contract.getGameBonus(this.declarerTricks);
       result += this.contract.getSlamBonus(this.declarerTricks);
       return result;
     } else {
@@ -263,12 +270,20 @@ export class Board {
   toString(): string {
     const result: string[] = [];
     result.push(`Board ${this._number} VUL:${this._vulnerability} Dealer:${this._dealer}`);
-    result.push(`  Hands: North: ${this._handsBySeat.get('N')!.toString()}  South: ${this._handsBySeat.get('S')!.toString()}`);
-    result.push(`         East:  ${this._handsBySeat.get('E')!.toString()}  West:  ${this._handsBySeat.get('W')!.toString()}`);
+    result.push(`  Hands: North: ${this._handsBySeat.get('N')!.toString()}`);
+    result.push(`         South: ${this._handsBySeat.get('S')!.toString()}`);
+    result.push(`         East:  ${this._handsBySeat.get('E')!.toString()}`);
+    result.push(`         West:  ${this._handsBySeat.get('W')!.toString()}`);
     if (this._contract) {
       result.push(`  Contract: ${this._contract.toString()}`);
     } else if (this._passedOut) {
       result.push(`  Passed out`);
+    }
+    if (this.tricks.length > 0) {
+      result.push(`  Tricks:`);
+      for (const t of this.tricks) {
+        result.push(`     ${t.toString()}`);
+      }
     }
     if (this._declarerTricks + this._defenseTricks > 0) {
       result.push(`  Tricks:  Declarer:${this._declarerTricks}  Defense:${this._defenseTricks}`);

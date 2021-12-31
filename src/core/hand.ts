@@ -2,6 +2,7 @@
 import { Card } from "./card";
 import * as assert from 'assert';
 import { CardRank, CARDS_PER_HAND, Suit, SUITS } from "./common";
+const pad = require('utils-pad-string');
 
 export class Hand {
   private _allCards: Card[] = [];
@@ -60,10 +61,19 @@ export class Hand {
         cards.forEach((card) => { row += card.rank });
         row += ' ';
       }
-      result.push(row);
+      const padded = pad(row, 11);
+      result.push(padded);
     }
-    const cards = result.join(', ');
+    const cards = result.join(' ');
     return cards + ` ${this.highCardPoints < 10 ? ' ' : ''}(${this.highCardPoints})  `;
+  }
+
+  getAvailableSuits(): Suit[] {
+    const result = new Set<Suit>();
+    for (const card of this._unplayed) {
+      result.add(card.suit);
+    }
+    return Array.from(result);
   }
 
   get highCardPoints(): number {

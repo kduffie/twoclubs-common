@@ -18,13 +18,7 @@ export class Play {
     return this._card;
   }
 
-  isBetter(other: Card, trump: Strain): boolean {
-    if (other.suit === this.card.suit) {
-      return CARD_RANKS.indexOf(other.rank) > CARD_RANKS.indexOf(this.card.rank);
-    } else if (trump === 'N') {
-      return false;
-    } else {
-      return other.suit === trump;
-    }
+  toString(): string {
+    return `${this.by}: ${this.card.toString()}`;
   }
 }
