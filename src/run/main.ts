@@ -2,6 +2,7 @@ import { TotalRandomPlayer } from "../robots/total-random-player";
 import { CoveringPlayer } from "../robots/covering-player";
 import { Director } from "./director";
 import { getPartnershipBySeat } from "../core/common";
+import { ThirdHandHighPlayer } from "../robots/third-hand-high-player";
 
 let totalBoards = 0;
 let totalDeclarerPoints = 0;
@@ -17,8 +18,8 @@ let totalEWSuccesses = 0;
 
 
 const director = new Director();
-director.seatPlayer('N', new CoveringPlayer('N'));
-director.seatPlayer('S', new CoveringPlayer('S'));
+director.seatPlayer('N', new ThirdHandHighPlayer('N'));
+director.seatPlayer('S', new ThirdHandHighPlayer('S'));
 director.seatPlayer('E', new TotalRandomPlayer('E'));
 director.seatPlayer('W', new TotalRandomPlayer('W'));
 let count = 0;

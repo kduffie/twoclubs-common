@@ -7,7 +7,7 @@ import { Play } from "../core/play";
 import { Card } from "../core/card";
 import * as assert from 'assert';
 
-export class CoveringPlayer extends PlayerImpl {
+export class ThirdHandHighPlayer extends PlayerImpl {
   constructor(seat: Seat) {
     super(seat);
   }
@@ -22,12 +22,16 @@ export class CoveringPlayer extends PlayerImpl {
     let selectedCard: Card | null = null;
     if (leadSuit) {
       const followingSuit = getCardsInSuit(eligibleCards, leadSuit);
-      if (followingSuit.length > 0) {
-        selectedCard = this.selectCardToCover(trick, followingSuit, board.contract.strain);
-      } else if (board.contract.strain !== 'N' && leadSuit !== board.contract.strain) {
+      if (followingSuit.length > 0 && trick.plays.length === 2) {
+        selectedCard = this.selectCardToCoverHigh(trick, followingSuit, board.contract.strain);
+      } else if (followingSuit.length > 0 && trick.plays.length === 3) {
+        selectedCard = this.selectCardToCoverLow(trick, followingSuit, board.contract.strain);
+      } else if (followingSuit.length > 0) {
+        selectedCard = this.selectLowestCard(eligibleCards, board.contract.strain);
+      } else if (trick.plays.length >= 3 && board.contract.strain !== 'N' && leadSuit !== board.contract.strain) {
         const trumpCards = getCardsInSuit(eligibleCards, board.contract.strain);
         if (trumpCards.length > 0) {
-          selectedCard = this.selectCardToCover(trick, trumpCards, board.contract.strain);
+          selectedCard = this.selectCardToCoverLow(trick, trumpCards, board.contract.strain);
         } else {
           selectedCard = this.selectLowestCard(eligibleCards, board.contract.strain);
         }
@@ -46,13 +50,32 @@ export class CoveringPlayer extends PlayerImpl {
     board.playCard(play);
   }
 
-  private selectCardToCover(trick: Trick, candidates: Card[], trump: Strain): Card {
+  private selectCardToCoverLow(trick: Trick, candidates: Card[], trump: Strain): Card {
     let result: Card | null = null;
     const currentBest = trick.getCurrentBest();
     if (currentBest && getPartnershipBySeat(currentBest.by) !== getParnershipBySeat(this.seat)) {
       for (const card of candidates) {
         if (card.isBetter(currentBest.card, trump)) {
           if (!result || result.isBetter(card, trump)) {
+            result = card;
+          }
+        }
+      }
+    }
+    if (result) {
+      return result;
+    } else {
+      return this.selectLowestCard(candidates, trump);
+    }
+  }
+
+  private selectCardToCoverHigh(trick: Trick, candidates: Card[], trump: Strain): Card {
+    let result: Card | null = null;
+    const currentBest = trick.getCurrentBest();
+    if (currentBest && getPartnershipBySeat(currentBest.by) !== getParnershipBySeat(this.seat)) {
+      for (const card of candidates) {
+        if (card.isBetter(currentBest.card, trump)) {
+          if (!result || card.isBetter(result, trump)) {
             result = card;
           }
         }
