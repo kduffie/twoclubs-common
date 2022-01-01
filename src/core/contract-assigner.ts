@@ -37,7 +37,9 @@ function chooseContract(partnership: Partnership, vulnerable: boolean, hand1: Ha
   const longestMinorSuitFit = Math.max(diamonds, clubs);
   const longestFit = Math.max(spades, hearts, diamonds, clubs);
   const stoppedSuitsInNT = union(hand1.getStoppedSuits(false), hand2.getStoppedSuits(false));
-  const stoppedSuitsInSuit = union(hand1.getStoppedSuits(true), hand2.getStoppedSuits(true));
+  const wellStoppedSuitsInNT = union(hand1.getWellStoppedSuits(false), hand2.getWellStoppedSuits(false));
+  const slamStoppedSuitsInNT = union(hand1.getFirstOrSecondRoundStoppedSuits(false), hand2.getFirstOrSecondRoundStoppedSuits(false));
+  const slamStoppedSuitsInSuit = union(hand1.getFirstOrSecondRoundStoppedSuits(true), hand2.getFirstOrSecondRoundStoppedSuits(true));
   const bestFit: Suit = spades === longestFit ? 'S' : (hearts === longestFit ? 'H' : (diamonds === longestFit ? 'D' : 'C'));
   const bestMajorSuitFit: Suit = spades >= hearts ? 'S' : 'H';
   const bestMinorSuitFit: Suit = diamonds > clubs ? 'D' : 'C';
@@ -46,17 +48,17 @@ function chooseContract(partnership: Partnership, vulnerable: boolean, hand1: Ha
   let count = 1;
   const partners = getSeatsByPartnership(partnership);
   let declarer = hand1.totalPoints >= hand2.totalPoints ? partners[0] : partners[1];
-  if (stoppedSuitsInSuit.size >= 3 && totalPoints >= 32 && totalHCP >= 30 && longestFit >= 8) {
+  if (slamStoppedSuitsInSuit.size === 4 && totalPoints >= 32 && totalHCP >= 30 && longestFit >= 8) {
     strain = bestFit;
     count = 6;
-  } else if (stoppedSuitsInNT.size >= 4 && totalHCP >= 32) {
+  } else if (slamStoppedSuitsInNT.size === 4 && totalHCP >= 32) {
     count = 6;
+  } else if (totalHCP >= 25 && stoppedSuitsInNT.size === 4 || totalPoints >= 25 && wellStoppedSuitsInNT.size === 4) {
+    count = 3;
   } else if (totalPoints >= 25 && longestMajorSuitFit >= 8) {
     strain = bestMajorSuitFit;
     count = 4;
-  } else if (totalHCP >= 25 && stoppedSuitsInNT.size === 4) {
-    count = 3;
-  } else if (totalPoints >= 28 && longestMinorSuitFit >= 9) {
+  } else if (totalPoints >= 27 && longestMinorSuitFit >= 8) {
     strain = bestMinorSuitFit;
     count = 5;
   } else if (longestFit >= 8) {

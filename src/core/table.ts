@@ -1,6 +1,6 @@
 import { BidWithSeat } from "./bid";
 import { Board } from "./board";
-import { BoardContext, FinalBoardContext, getSeatFollowing, Partnership, randomlySelect, Seat, SEATS, VULNERABILITIES } from "./common";
+import { BoardContext, FinalBoardContext, getPartnerBySeat, getSeatFollowing, Partnership, randomlySelect, Seat, SEATS, VULNERABILITIES } from "./common";
 import { ContractAssigner, defaultContractAssigner } from "./contract-assigner";
 import { Player, PlayerBase } from "./player";
 import * as assert from 'assert';
@@ -90,7 +90,11 @@ export class Table {
     }
     if (board.status === 'play') {
       assert(board.contract);
-      let seat = getSeatFollowing(board.contract.declarer);
+      const declarer = this.players.get(board.contract.declarer);
+      assert(declarer);
+      const dummy = this.players.get(getPartnerBySeat(declarer.seat));
+      assert(dummy);
+      let seat = getSeatFollowing(declarer.seat);
       while (true) {
         const player = this.players.get(seat);
         assert(player);
@@ -98,7 +102,7 @@ export class Table {
         if (!trick) {
           break;
         }
-        const card = await player.play(board, board.getHand(seat));
+        const card = player.seat === dummy.seat ? await declarer.playFromDummy(board, board.getHand(seat), board.getHand(declarer.seat)) : await player.play(board, board.getHand(seat), board.getHand(dummy.seat));
         const actualCard = board.getHand(seat).ensureEligibleToPlay(card, trick.getLeadSuit());
         board.getHand(seat).playCard(actualCard)
         board.playCard(new Play(seat, actualCard));

@@ -34,6 +34,10 @@ export class PartnershipStats {
   private _passedBoards = new SituationalStats('passed-out', 'Passed out boards');
   private _declarerBoards = new SituationalStats('declarer', 'When declarer');
   private _defenderBoards = new SituationalStats('defender', 'When defending');
+  private _vulDeclarerBoards = new SituationalStats('declarer-vul', 'When declarer and vulnerable');
+  private _nonVulDeclarerBoards = new SituationalStats('declarer', 'When declarer and non-vulnerable');
+  private _vulDefenderBoards = new SituationalStats('declarer', 'When defender and declarer is vulnerable');
+  private _nonVulDefenderBoards = new SituationalStats('declarer', 'When defender and declarer is non-vulnerable');
   private _ntDeclarerBoards = new SituationalStats('declarer-nt', 'When declarer in NT');
   private _ntDefenderBoards = new SituationalStats('defender-nt', 'When defender in NT');
   private _suitDeclarerBoards = new SituationalStats('declarer-suit', 'When declarer in suit contract');
@@ -65,6 +69,8 @@ export class PartnershipStats {
     result.push(this._passedBoards);
 
     result.push(this._declarerBoards);
+    result.push(this._vulDeclarerBoards);
+    result.push(this._nonVulDeclarerBoards);
     result.push(this._ntDeclarerBoards);
     result.push(this._suitDeclarerBoards);
     result.push(this._slamDeclarerBoards);
@@ -76,6 +82,9 @@ export class PartnershipStats {
     result.push(this._minorGameDeclarerBoards);
 
     result.push(this._defenderBoards);
+    result.push(this._vulDefenderBoards);
+    result.push(this._nonVulDefenderBoards);
+
     result.push(this._ntDefenderBoards);
     result.push(this._suitDefenderBoards);
     result.push(this._slamDefenderBoards);
@@ -96,6 +105,11 @@ export class PartnershipStats {
       this._ntDeclarerBoards.processBoard(board, true);
     } else {
       this._suitDeclarerBoards.processBoard(board, true);
+    }
+    if (board.contract.vulnerable) {
+      this._vulDeclarerBoards.processBoard(board, true);
+    } else {
+      this._nonVulDeclarerBoards.processBoard(board, true);
     }
     if (board.contract.getApplicableSlam() !== 'none') {
       this._slamDeclarerBoards.processBoard(board, true);
@@ -127,6 +141,11 @@ export class PartnershipStats {
       this._ntDefenderBoards.processBoard(board, false);
     } else {
       this._suitDefenderBoards.processBoard(board, false);
+    }
+    if (board.contract.vulnerable) {
+      this._vulDefenderBoards.processBoard(board, false);
+    } else {
+      this._nonVulDefenderBoards.processBoard(board, false);
     }
     if (board.contract.getApplicableSlam() !== 'none') {
       this._slamDefenderBoards.processBoard(board, false);

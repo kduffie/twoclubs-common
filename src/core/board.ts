@@ -39,14 +39,14 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
       cardIndexes.push(i);
     }
     shuffle(cardIndexes);
-    let index = 0;
     const hands = new Map<Seat, Hand>();
-    for (let handIndex = 0; handIndex < SEATS.length; handIndex++) {
-      const hand = new Hand();
-      hands.set(SEATS[handIndex], hand);
-      for (let cardIndex = 0; cardIndex < CARDS_PER_HAND; cardIndex++) {
-        hand.dealCard(new Card(cardIndexes[index++]));
-      }
+    for (const seat of SEATS) {
+      hands.set(seat, new Hand());
+    }
+    let seat = getSeatFollowing(dealer);
+    for (const index of cardIndexes) {
+      hands.get(seat)!.dealCard(new Card(CARD_RANKS[index % CARD_RANKS.length], SUITS[Math.floor(index / CARD_RANKS.length)]))
+      seat = getSeatFollowing(seat);
     }
     return new Board(id, vulnerability, dealer, hands);
   }
@@ -108,6 +108,13 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
 
   get contract(): Contract | null {
     return this._contract;
+  }
+
+  get dummySeat(): Seat | null {
+    if (!this.contract) {
+      return null;
+    }
+    return getPartnerBySeat(this.contract.declarer);
   }
 
   get playContract(): Contract {

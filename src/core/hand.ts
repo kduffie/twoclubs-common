@@ -1,7 +1,7 @@
 
 import { Card } from "./card";
 import * as assert from 'assert';
-import { CardRank, CARDS_PER_HAND, Suit, SUITS } from "./common";
+import { CardRank, CARDS_PER_HAND, CARD_RANKS, Suit, SUITS } from "./common";
 const pad = require('utils-pad-string');
 
 export class Hand {
@@ -14,7 +14,11 @@ export class Hand {
     this._allCards.push(card);
     if (this._allCards.length === CARDS_PER_HAND) {
       this._allCards.sort((a, b) => {
-        return b.index - a.index;
+        if (a.rank === b.rank) {
+          return SUITS.indexOf(b.suit) - SUITS.indexOf(a.suit);
+        } else {
+          return CARD_RANKS.indexOf(b.rank) - CARD_RANKS.indexOf(a.rank);
+        }
       });
       this._unplayed = [...this._allCards];
     }
@@ -116,6 +120,26 @@ export class Hand {
     return result;
   }
 
+  getWellStoppedSuits(includeVoid: boolean): Set<Suit> {
+    const result = new Set<Suit>();
+    for (const suit of SUITS) {
+      if (this.isWellStopped(suit, includeVoid)) {
+        result.add(suit);
+      }
+    }
+    return result;
+  }
+
+  getFirstOrSecondRoundStoppedSuits(includeVoid: boolean): Set<Suit> {
+    const result = new Set<Suit>();
+    for (const suit of SUITS) {
+      if (this.hasFirstOrSecondRoundStopper(suit, includeVoid)) {
+        result.add(suit);
+      }
+    }
+    return result;
+  }
+
   hasStopper(suit: Suit, includeVoid: boolean): boolean {
     if (includeVoid) {
       const cards = this.getCardsBySuit(suit, false);
@@ -126,7 +150,43 @@ export class Hand {
     return this.cardsInclude(suit, 1, 'A') ||
       this.cardsInclude(suit, 2, 'K') ||
       this.cardsInclude(suit, 3, 'Q') ||
-      this.cardsInclude(suit, 4, 'J');
+      this.cardsInclude(suit, 4, 'J') ||
+      this.getCardsBySuit(suit, false).length > 4;
+  }
+
+  isWellStopped(suit: Suit, includeVoid: boolean): boolean {
+    if (includeVoid) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length === 0) {
+        return true;
+      }
+    }
+    return this.cardsInclude(suit, 2, 'A', 'K') ||
+      this.cardsInclude(suit, 3, 'A', 'Q') ||
+      this.cardsInclude(suit, 4, 'A', 'J', 'T') ||
+      this.cardsInclude(suit, 3, 'K', 'Q') ||
+      this.cardsInclude(suit, 4, 'Q', 'J') ||
+      this.getCardsBySuit(suit, false).length > 4;
+  }
+
+  hasFirstRoundStopper(suit: Suit, includeVoid: boolean): boolean {
+    if (includeVoid) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length === 0) {
+        return true;
+      }
+    }
+    return this.cardsInclude(suit, 1, 'A');
+  }
+
+  hasFirstOrSecondRoundStopper(suit: Suit, includeVoid: boolean): boolean {
+    if (includeVoid) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length === 0) {
+        return true;
+      }
+    }
+    return this.cardsInclude(suit, 1, 'A') || this.cardsInclude(suit, 2, 'K');
   }
 
   cardsInclude(suit: Suit, minCount: number, ...ranks: CardRank[]): boolean {
@@ -150,24 +210,17 @@ export class Hand {
   }
 
   get totalPoints(): number {
-    let total = this.highCardPoints;
+    let shortnessPoints = 0;
+    let lengthPoints = 0;
     for (const suit of SUITS) {
       const cards = this.getCardsBySuit(suit, false);
-      switch (cards.length) {
-        case 0:
-          total += 3;
-          break;
-        case 1:
-          total += 2;
-          break;
-        case 2:
-          total += 1;
-          break;
-        default:
-          break;
+      if (cards.length < 3) {
+        shortnessPoints += 3 - cards.length;
+      } else if (cards.length >= 5) {
+        lengthPoints += cards.length - 4;
       }
     }
-    return total;
+    return this.highCardPoints + Math.max(shortnessPoints, lengthPoints);
   }
 
   toString(): string {

@@ -9,7 +9,8 @@ export interface Player {
   startBoard: (context: BoardContext) => Promise<void>;
   bid: (context: BidContext) => Promise<Bid>;
   startPlay: (context: PlayContext) => Promise<void>;
-  play: (context: PlayContext, hand: Hand) => Promise<Card>;
+  play: (context: PlayContext, hand: Hand, dummy: Hand | null) => Promise<Card>;
+  playFromDummy(context: PlayContext, dummy: Hand, hand: Hand): Promise<Card>;
   finishPlay: (context: FinalBoardContext) => Promise<void>
 }
 
@@ -38,7 +39,12 @@ export class PlayerBase implements Player {
     // available for derived implementation
   }
 
-  async play(context: PlayContext, hand: Hand): Promise<Card> {
+  async playFromDummy(context: PlayContext, dummy: Hand, hand: Hand): Promise<Card> {
+    const cards = dummy.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
+    return randomlySelect(cards);
+  }
+
+  async play(context: PlayContext, hand: Hand, dummy: Hand | null): Promise<Card> {
     const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
     return randomlySelect(cards);
   }
