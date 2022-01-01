@@ -1,14 +1,13 @@
 import { BidType, MAX_CONTRACT_SIZE, Seat, Strain, STRAINS } from "./common";
 import * as assert from 'assert';
 
+export const BID_PATTERN = /^(pass)|(dbl)|rdbl?|([1-7](c|d|h|s|nt?))$/i;
 export class Bid {
   private _type: BidType;
   private _count?: number;
   private _strain?: Strain;
-  private _by: Seat;
 
-  constructor(by: Seat, _type: BidType, count?: number, strain?: Strain,) {
-    this._by = by;
+  constructor(_type: BidType, count?: number, strain?: Strain,) {
     this._type = _type;
     if (_type === 'normal') {
       assert(count && count > 0 && count <= MAX_CONTRACT_SIZE)
@@ -16,12 +15,40 @@ export class Bid {
       this._count = count;
       this._strain = strain;
     } else {
-      assert(!count && !strain);
+      assert(!count && !strain, 'Count and strain not appropriate for this type of bid');
     }
   }
 
-  get by(): Seat {
-    return this._by;
+  static parse(value: string): Bid {
+    if (BID_PATTERN.test(value)) {
+      switch (value) {
+        case 'pass':
+          return new Bid('pass');
+        case 'dbl':
+          return new Bid('double');
+        case 'rdb':
+        case 'rdbl':
+          return new Bid('redouble');
+        default:
+          const count = Number(value.charAt(0));
+          switch (value.toLowerCase().charAt(1)) {
+            case 'c':
+              return new Bid('normal', count, 'C');
+            case 'd':
+              return new Bid('normal', count, 'D');
+            case 'h':
+              return new Bid('normal', count, 'H');
+            case 's':
+              return new Bid('normal', count, 'S');
+            case 'n':
+              return new Bid('normal', count, 'N');
+            default:
+              throw new Error("Unhandled bid " + value);
+          }
+      }
+    } else {
+      throw new Error("Unrecognized bid " + value);
+    }
   }
 
   get type(): BidType {
@@ -37,79 +64,39 @@ export class Bid {
     return this._strain!;
   }
 
-
-  isLegalFollowing(bids: Bid[]): boolean {
-    switch (this.type) {
-      case 'pass':
-        return true;
-      case 'normal': {
-        const lastNormal = this.getLastNormalBid(bids);
-        return lastNormal && this.isLarger(lastNormal) ? true : false;
-      }
-      case 'double': {
-        if (bids.length === 0) {
-          return false;
-        } else {
-          switch (bids[bids.length - 1].type) {
-            case 'pass': {
-              if (bids.length < 3) {
-                return false;
-              }
-              if (bids[bids.length - 2].type !== 'pass') {
-                return false;
-              }
-              return bids[bids.length - 3].type === 'normal';
-            }
-            case 'normal':
-              return true;
-            case 'double':
-            case 'redouble':
-              return false;
-            default:
-              throw new Error("Unexpected type");
-          }
-        }
-      }
-      case 'redouble': {
-        if (bids.length < 2) {
-          return false;
-        }
-        switch (bids[bids.length - 1].type) {
-          case 'pass': {
-            if (bids.length < 3) {
-              return false;
-            }
-            if (bids[bids.length - 2].type !== 'pass') {
-              return false;
-            }
-            return bids[bids.length - 3].type === 'double';
-          }
-          case 'normal':
-            return false;
-          case 'double':
-            return true;
-          case 'redouble':
-            return false;
-          default:
-            throw new Error("Unexpected type");
-        }
-      }
-      default:
-        throw new Error("Unexpected type " + this.type);
-    }
-  }
-
-  getLastNormalBid(bids: Bid[]): Bid | null {
-    for (let i = 0; i < bids.length; i++) {
-      if (bids[bids.length - 1 - i].type === 'normal') {
-        return bids[bids.length - 1 - i];
-      }
-    }
-    return null;
-  }
-
   isLarger(bid: Bid): boolean {
     assert(this.type === 'normal' && bid.type === 'normal');
     return this.count > bid.count || (this.count === bid.count && STRAINS.indexOf(this.strain) > STRAINS.indexOf(bid.strain));
+  }
+
+  toString(): string {
+    switch (this.type) {
+      case 'pass':
+      case 'double':
+      case 'redouble':
+        return this.type;
+      case 'normal':
+        return `${this.count}${this.strain}`;
+    }
+  }
+}
+
+export class BidWithSeat extends Bid {
+  private _by: Seat;
+  constructor(by: Seat, _type: BidType, count?: number, strain?: Strain) {
+    super(_type, count, strain);
+    this._by = by;
+  }
+
+  get by(): Seat {
+    return this._by;
+  }
+
+  toString(includeBy?: boolean): string {
+    if (includeBy) {
+      return `${super.toString()} by ${this.by}`;
+    } else {
+      return super.toString();
+    }
   }
 }

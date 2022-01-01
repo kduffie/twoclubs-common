@@ -1,19 +1,25 @@
 import { Board } from "./board";
-import { getFollowingSeat, Seat, SEATS, Partnership, getPartnershipBySeat, Suit } from "./common";
+import { getSeatFollowing, Seat, SEATS, Partnership, getPartnershipBySeat, Suit } from "./common";
 import { Play } from "./play";
 import * as assert from 'assert';
 
 export class Trick {
   private _board: Board;
+  private _lead: Seat;
   private _plays: Play[] = [];
   private _winningIndex = -1;
 
-  constructor(board: Board) {
+  constructor(board: Board, lead: Seat) {
     this._board = board;
+    this._lead = lead;
   }
 
   get plays(): Play[] {
     return this._plays;
+  }
+
+  get lead(): Seat {
+    return this._lead;
   }
 
   get winner(): Play | null {
@@ -23,14 +29,18 @@ export class Trick {
     return this.plays[this._winningIndex];
   }
 
-  get winningPartnership(): Partnership {
-    assert(this.winner);
+  get winningPartnership(): Partnership | null {
+    if (!this.winner) {
+      return null;
+    }
     return getPartnershipBySeat(this.winner.by);
   }
 
   playCard(play: Play): Play | null {
-    if (this.plays.length > 0) {
-      assert(play.by === getFollowingSeat(this.plays[this.plays.length - 1].by));
+    if (this.plays.length === 0) {
+      assert(play.by === this._lead);
+    } else {
+      assert(play.by === getSeatFollowing(this.plays[this.plays.length - 1].by));
     }
     this.plays.push(play);
     if (this.plays.length === SEATS.length) {
@@ -52,7 +62,7 @@ export class Trick {
     if (this.winner) {
       return this.winner.by;
     }
-    return getFollowingSeat(this.plays[this.plays.length - 1].by);
+    return getSeatFollowing(this.plays[this.plays.length - 1].by);
   }
 
   private determineWinner(): Play {

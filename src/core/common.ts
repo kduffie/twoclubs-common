@@ -1,9 +1,18 @@
+import { BidWithSeat } from "./bid";
 import { Card } from "./card";
-import { Player } from "./player";
+import { Contract } from "./contract";
+import { Trick } from "./trick";
+import * as shuffle from 'shuffle-array';
+import { assert } from "console";
+import { Auction } from "./auction";
+import { Hand } from "./hand";
+
 
 export type Seat = 'N' | 'E' | 'S' | 'W';
 export const SEATS: Seat[] = ['N', 'E', 'S', 'W'];
+
 export type Partnership = 'NS' | 'EW';
+export const PARTNERSHIPS: Partnership[] = ['NS', 'EW'];
 export type Vulnerability = Partnership | 'none' | 'both';
 export const VULNERABILITIES: Vulnerability[] = ['NS', 'EW', 'none', 'both'];
 
@@ -15,20 +24,14 @@ export type Strain = Suit | 'N';
 export const STRAINS: Strain[] = ['C', 'D', 'H', 'S', 'N'];
 
 export const CARDS_PER_HAND = 13;
-export type Doubling = 'none' | 'doubled' | 'redoubled';
 export const MAX_CONTRACT_SIZE = 7;
-
-export type BidType = 'pass' | 'normal' | 'double' | 'redouble';
-
 export const TRICKS_PER_BOARD = 13;
 
+export type BidType = 'pass' | 'normal' | 'double' | 'redouble';
+export type Doubling = 'none' | 'doubled' | 'redoubled';
 export type SlamType = 'none' | 'small' | 'grand';
 
-export const INSULT_BONUS = 50;
-
-export type PlayerFactory = (seat: Seat) => Player;
-
-export function getPartnerSeat(seat: Seat): Seat {
+export function getPartnerBySeat(seat: Seat): Seat {
   switch (seat) {
     case 'N':
       return 'S';
@@ -43,7 +46,7 @@ export function getPartnerSeat(seat: Seat): Seat {
   }
 }
 
-export function getFollowingSeat(seat: Seat): Seat {
+export function getSeatFollowing(seat: Seat): Seat {
   switch (seat) {
     case 'N':
       return 'E';
@@ -71,15 +74,26 @@ export function getPartnershipBySeat(seat: Seat): Partnership {
   }
 }
 
-export function union<T>(set1: Set<T>, set2: Set<T>): Set<T> {
-  const result = new Set<T>();
-  for (const value of set1) {
-    result.add(value);
+export function getOpposingPartnership(partnership: Partnership): Partnership {
+  switch (partnership) {
+    case 'NS':
+      return 'EW';
+    case 'EW':
+      return 'NS';
   }
-  for (const value of set2) {
-    result.add(value);
+}
+
+export function getSeatName(seat: Seat): string {
+  switch (seat) {
+    case 'N':
+      return 'North';
+    case 'E':
+      return 'East';
+    case 'S':
+      return 'South';
+    case 'W':
+      return 'West';
   }
-  return result;
 }
 
 export function getSeatsByPartnership(partnership: Partnership): Seat[] {
@@ -91,23 +105,65 @@ export function getSeatsByPartnership(partnership: Partnership): Seat[] {
   }
 }
 
-export function getParnershipBySeat(seat: Seat): Partnership {
-  switch (seat) {
-    case 'N':
-    case 'S':
-      return 'NS';
-    case 'E':
-    case 'W':
-      return 'EW';
-  }
-}
-
 export function getCardsInSuit(cards: Card[], suit: Suit): Card[] {
   const result: Card[] = [];
   for (const c of cards) {
     if (c.suit === suit) {
       result.push(c);
     }
+  }
+  return result;
+}
+
+export interface BoardContext {
+  boardId: string;
+  vulnerability: Vulnerability;
+  dealer: Seat;
+  hands: Map<Seat, Hand>;
+  status: BoardStatus;
+  toString(): string;
+}
+
+export type BoardStatus = 'created' | 'bidding' | 'play' | 'complete';
+
+export interface FinalBoardContext extends BoardContext {
+  bids: BidWithSeat[];
+  contract: Contract | null;
+  passedOut: boolean;
+  tricks: Trick[];
+  defenseTricks: number;
+  declarerTricks: number;
+  declarerScore: number;
+}
+
+export interface BidContext {
+  board: BoardContext;
+  vulnerablePartnership: Partnership;
+  auction: Auction;
+}
+
+export interface PlayContext {
+  board: BoardContext;
+  playContract: Contract;
+  defenseTricks: number;
+  declarerTricks: number;
+  completedTricks: Trick[];
+  playCurrentTrick: Trick;
+}
+
+export function randomlySelect<T>(candidates: T[]): T {
+  assert(candidates.length > 0);
+  const result = shuffle.pick(candidates);
+  return Array.isArray(result) ? result[0] : result;
+}
+
+export function union<T>(set1: Set<T>, set2: Set<T>): Set<T> {
+  const result = new Set<T>();
+  for (const value of set1) {
+    result.add(value);
+  }
+  for (const value of set2) {
+    result.add(value);
   }
   return result;
 }

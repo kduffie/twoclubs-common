@@ -1,6 +1,6 @@
-import { assert } from 'console';
 import { Bid } from './bid';
 import { Seat, Strain, Doubling, MAX_CONTRACT_SIZE, Partnership, getPartnershipBySeat, SlamType } from './common';
+import * as assert from 'assert';
 
 export class Contract {
   private _count: number;
@@ -26,6 +26,40 @@ export class Contract {
     return this._vulnerable;
   }
 
+  get partnership(): Partnership {
+    return getPartnershipBySeat(this.declarer);
+  }
+
+  get count(): number {
+    return this._count;
+  }
+
+  get strain(): Strain {
+    return this._strain;
+  }
+
+  get doubling(): Doubling {
+    return this._doubling;
+  }
+
+
+  // tricksMade starts at 1 (for the seventh trick)
+  // result is from the perspective of the declarer, i.e., positive for made contracts
+  getScore(tricksMade: number): number {
+    if (tricksMade >= this.count + 6) {
+      let result = this.getAdditionalTrickScore() + this.count * this.getPerTrickScore();
+      const overtricks = tricksMade - (this.count + 6);
+      result += this.getOverTrickScore(overtricks);
+      result += this.getGameBonus(tricksMade);
+      result += this.getSlamBonus(tricksMade);
+      return result;
+    } else {
+      const undertricks = (this.count + 6) - tricksMade;
+      const penalty = this.getUnderTrickScore(undertricks);
+      return -penalty;
+    }
+  }
+
   isGameBonusApplicable(): boolean {
     switch (this._strain) {
       case 'C':
@@ -41,7 +75,7 @@ export class Contract {
     }
   }
 
-  getGameBonus(tricksMade: number): number {
+  private getGameBonus(tricksMade: number): number {
     if (!this.isGameBonusApplicable()) {
       return 50;
     }
@@ -74,7 +108,7 @@ export class Contract {
     }
   }
 
-  getSlamBonus(tricksMade: number): number {
+  private getSlamBonus(tricksMade: number): number {
     const slamType = this.getApplicableSlam();
     switch (slamType) {
       case 'none':
@@ -86,11 +120,11 @@ export class Contract {
     }
   }
 
-  getAdditionalTrickScore(): number {
+  private getAdditionalTrickScore(): number {
     return this.strain === 'N' ? 10 : 0;
   }
 
-  getPerTrickScore(): number {
+  private getPerTrickScore(): number {
     switch (this.strain) {
       case 'C':
       case 'D':
@@ -104,7 +138,7 @@ export class Contract {
     }
   }
 
-  getOverTrickScore(overtricks: number): number {
+  private getOverTrickScore(overtricks: number): number {
     if (overtricks === 0) {
       return 0;
     }
@@ -118,7 +152,7 @@ export class Contract {
     }
   }
 
-  getUnderTrickScore(undertricks: number): number {
+  private getUnderTrickScore(undertricks: number): number {
     if (undertricks === 0) {
       return 0;
     }
@@ -142,22 +176,6 @@ export class Contract {
           return 200 + (undertricks > 1 ? 400 : 0) + (undertricks > 2 ? 400 : 0) + (undertricks > 3 ? (undertricks - 3) * 600 : 0);
       }
     }
-  }
-
-  get partnership(): Partnership {
-    return getPartnershipBySeat(this.declarer);
-  }
-
-  get count(): number {
-    return this._count;
-  }
-
-  get strain(): Strain {
-    return this._strain;
-  }
-
-  get doubling(): Doubling {
-    return this._doubling;
   }
 
   toString(): string {

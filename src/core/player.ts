@@ -1,13 +1,21 @@
-import { Board } from "./board";
-import { Seat } from "./common";
-import { Trick } from "./trick";
+import { Bid } from "./bid";
+import { Card } from "./card";
+import { BidContext, BoardContext, FinalBoardContext, PlayContext, randomlySelect, Seat } from "./common";
+import { Hand } from "./hand";
+
 
 export interface Player {
   seat: Seat;
-  play: (board: Board, trick: Trick) => void;
+  startBoard: (context: BoardContext) => Promise<void>;
+  bid: (context: BidContext) => Promise<Bid>;
+  startPlay: (context: PlayContext) => Promise<void>;
+  play: (context: PlayContext, hand: Hand) => Promise<Card>;
+  finishPlay: (context: FinalBoardContext) => Promise<void>
 }
 
-export abstract class PlayerImpl implements Player {
+export type PlayerFactory = (seat: Seat) => Player;
+
+export class PlayerBase implements Player {
   private _seat: Seat;
 
   constructor(seat: Seat) {
@@ -18,5 +26,24 @@ export abstract class PlayerImpl implements Player {
     return this._seat;
   }
 
-  abstract play(board: Board, trick: Trick): void;
+  async startBoard(context: BoardContext): Promise<void> {
+    // available for derived implementation
+  }
+
+  async bid(context: BidContext): Promise<Bid> {
+    return new Bid('pass');
+  }
+
+  async startPlay(context: PlayContext): Promise<void> {
+    // available for derived implementation
+  }
+
+  async play(context: PlayContext, hand: Hand): Promise<Card> {
+    const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
+    return randomlySelect(cards);
+  }
+
+  async finishPlay(context: FinalBoardContext): Promise<void> {
+    // available for derived implementation
+  }
 }

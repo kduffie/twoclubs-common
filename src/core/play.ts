@@ -1,5 +1,5 @@
 import { Card } from "./card";
-import { CARD_RANKS, Seat, Strain } from "./common";
+import { Seat } from "./common";
 
 export class Play {
   private _by: Seat;

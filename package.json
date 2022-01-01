@@ -19,11 +19,17 @@
   },
   "homepage": "https://twoclubs.com",
   "dependencies": {
+    "@types/prompt": "^1.1.2",
+    "prompt": "^1.2.0",
     "shuffle-array": "^1.0.1",
-    "utils-pad-string": "^1.0.0"
+    "sprintf-js": "^1.1.2",
+    "utils-pad-string": "^1.0.0",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@types/node": "^16.3.3",
-    "@types/shuffle-array": "^1.0.2"
+    "@types/shuffle-array": "^1.0.2",
+    "@types/sprintf-js": "^1.1.2",
+    "@types/uuid": "^8.3.3"
   }
 }

@@ -36,7 +36,7 @@ export class Hand {
     return this._allCards;
   }
 
-  getEligibleToPlay(lead?: Suit): Card[] {
+  getEligibleToPlay(lead: Suit | null): Card[] {
     const result: Card[] = [];
     for (const crd of this._unplayed) {
       if (crd.suit === lead) {
@@ -49,24 +49,20 @@ export class Hand {
     return result;
   }
 
-  toString(): string {
-    const result: string[] = [];
-    for (let i = 0; i < SUITS.length; i++) {
-      const suit = SUITS[SUITS.length - 1 - i];
-      let row = suit + ': ';
-      const cards = this.getCardsBySuit(suit);
-      if (cards.length === 0) {
-        row += '-';
-      } else {
-        cards.forEach((card) => { row += card.rank });
-        row += ' ';
+  ensureEligibleToPlay(card: Card, lead: Suit | null): Card {
+    const inSuit = lead ? this.getCardsBySuit(lead, true) : [];
+    for (const c of this._unplayed) {
+      if (card.isEqual(c)) {
+        if (!lead || lead === c.suit || inSuit.length === 0) {
+          return c;
+        } else {
+          throw new Error("This card is not eligible to be played");
+        }
       }
-      const padded = pad(row, 11);
-      result.push(padded);
     }
-    const cards = result.join(' ');
-    return cards + ` ${this.highCardPoints < 10 ? ' ' : ''}(${this.highCardPoints})  `;
+    throw new Error("This card is not available");
   }
+
 
   getAvailableSuits(): Suit[] {
     const result = new Set<Suit>();
@@ -99,9 +95,10 @@ export class Hand {
     return total;
   }
 
-  getCardsBySuit(suit: Suit): Card[] {
+  getCardsBySuit(suit: Suit, availableOnly: boolean): Card[] {
     let result: Card[] = [];
-    for (const card of this.cards) {
+    const candidates = availableOnly ? this._unplayed : this._allCards;
+    for (const card of candidates) {
       if (card.suit === suit) {
         result.push(card);
       }
@@ -121,7 +118,7 @@ export class Hand {
 
   hasStopper(suit: Suit, includeVoid: boolean): boolean {
     if (includeVoid) {
-      const cards = this.getCardsBySuit(suit);
+      const cards = this.getCardsBySuit(suit, false);
       if (cards.length === 0) {
         return true;
       }
@@ -133,7 +130,7 @@ export class Hand {
   }
 
   cardsInclude(suit: Suit, minCount: number, ...ranks: CardRank[]): boolean {
-    const cards = this.getCardsBySuit(suit);
+    const cards = this.getCardsBySuit(suit, false);
     if (cards.length < minCount) {
       return false;
     }
@@ -155,7 +152,7 @@ export class Hand {
   get totalPoints(): number {
     let total = this.highCardPoints;
     for (const suit of SUITS) {
-      const cards = this.getCardsBySuit(suit);
+      const cards = this.getCardsBySuit(suit, false);
       switch (cards.length) {
         case 0:
           total += 3;
@@ -171,5 +168,25 @@ export class Hand {
       }
     }
     return total;
+  }
+
+  toString(): string {
+    const partial = this._unplayed.length > 0 && this._unplayed.length < CARDS_PER_HAND;
+    const result: string[] = [];
+    for (let i = 0; i < SUITS.length; i++) {
+      const suit = SUITS[SUITS.length - 1 - i];
+      let row = suit + ': ';
+      const cards = this.getCardsBySuit(suit, partial);
+      if (cards.length === 0) {
+        row += '-';
+      } else {
+        cards.forEach((card) => { row += card.rank });
+        row += ' ';
+      }
+      const padded = pad(row, 11);
+      result.push(padded);
+    }
+    const cards = result.join(' ');
+    return cards + (partial ? '' : (` ${this.highCardPoints < 10 ? ' ' : ''}(${this.highCardPoints})  `));
   }
 }
