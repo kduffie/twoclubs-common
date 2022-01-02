@@ -12,10 +12,14 @@ export class Card {
     this._rank = rank;
   }
 
-  static parse(value: string): Card {
-    if (CARD_PATTERN.test(value)) {
-      value = value.toLowerCase();
-      const suitName = value.charAt(value.length - 1).toUpperCase();
+  get name(): string {
+    return this._rank + this._suit;
+  }
+
+  static parse(name: string): Card {
+    if (CARD_PATTERN.test(name)) {
+      name = name.toLowerCase();
+      const suitName = name.charAt(name.length - 1).toUpperCase();
       let suit: Suit | null = null;
       for (const s of SUITS) {
         if (s === suitName) {
@@ -24,7 +28,7 @@ export class Card {
         }
       }
       assert(suit);
-      switch (value.charAt(0)) {
+      switch (name.charAt(0)) {
         case 'a':
           return new Card('A', suit);
         case 'k':
@@ -36,6 +40,7 @@ export class Card {
         case 't':
           return new Card('A', suit);
         case '1':
+          assert(name.charAt(1) === '0', 'Illegal card name');
           return new Card('T', suit);
         case '2':
           return new Card('2', suit);
@@ -54,10 +59,10 @@ export class Card {
         case '9':
           return new Card('9', suit);
         default:
-          throw new Error("Unexpected card " + value);
+          throw new Error("Unexpected card " + name);
       }
     } else {
-      throw new Error("Unrecognized card " + value);
+      throw new Error("Unrecognized card " + name);
     }
   }
 
@@ -73,7 +78,7 @@ export class Card {
   }
 
   toString(): string {
-    return `${this.rank}${this.suit}`;
+    return this.name;
   }
 
   isBetter(other: Card, trump: Strain): boolean {

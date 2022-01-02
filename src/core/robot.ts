@@ -5,7 +5,6 @@ import { ConventionCard, SimpleConventionCard } from "./convention-card";
 import { Hand } from "./hand";
 import { PlayerBase } from "./player";
 import * as assert from 'assert';
-import { Play } from "./play";
 import { Trick } from "./trick";
 
 export interface RobotStrategy {
@@ -40,6 +39,7 @@ export class Robot extends PlayerBase {
     super();
     this._conventionCard = new SimpleConventionCard('dbs');
     this._strategy = strategies || {};
+    const foo = new Set<Object>();
   }
 
   get conventionCard(): ConventionCard {
@@ -227,7 +227,7 @@ export class Robot extends PlayerBase {
               }
             }
             if (dummy) {
-              let ourTrumps = trumpCards.length + dummy.getCardsBySuit(context.playContract.strain, true).length;
+              let ourTrumps = trumpCards.length + dummy.getUnplayedCardsInSuit(context.playContract.strain).length;
               if (trumpsPlayed + ourTrumps < CARD_RANKS.length) {
                 return context.playContract.strain;
               }
@@ -404,7 +404,7 @@ export class Robot extends PlayerBase {
 
   private isNoTrumpFeasible(hand: Hand, partnerEvaluation: HandEvalution): boolean {
     for (const suit of SUITS) {
-      const cards = hand.getCardsBySuit(suit, false);
+      const cards = hand.getAllCardsInSuit(suit);
       if (cards.length < 4 && partnerEvaluation.distribution.get(suit)!.min < 4) {
         return false;
       }
@@ -415,7 +415,7 @@ export class Robot extends PlayerBase {
   private isMajorSuitFeasible(hand: Hand, partnerEvaluation: HandEvalution): Suit | null {
     const suits: Suit[] = ['S', 'H'];
     for (const suit of suits) {
-      const cards = hand.getCardsBySuit(suit, false);
+      const cards = hand.getAllCardsInSuit(suit);
       if (cards.length + Math.max(2, partnerEvaluation.distribution.get(suit)!.min) >= 8) {
         return suit;
       }
@@ -426,7 +426,7 @@ export class Robot extends PlayerBase {
   private isMinorSuitFeasible(hand: Hand, partnerEvaluation: HandEvalution): Suit | null {
     const suits: Suit[] = ['C', 'D'];
     for (const suit of suits) {
-      const cards = hand.getCardsBySuit(suit, false);
+      const cards = hand.getAllCardsInSuit(suit);
       if (cards.length + Math.max(2, partnerEvaluation.distribution.get(suit)!.min) >= 9) {
         return suit;
       }

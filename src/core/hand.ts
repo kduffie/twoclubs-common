@@ -1,84 +1,138 @@
 
 import { Card } from "./card";
 import * as assert from 'assert';
-import { CardRank, CARDS_PER_HAND, CARD_RANKS, Suit, SUITS } from "./common";
+import { CardRank, cardsInclude, CARDS_PER_HAND, CARD_RANKS, sortCards, Suit, SUITS } from "./common";
 const pad = require('utils-pad-string');
 
 export class Hand {
-  private _allCards: Card[] = [];
-  private _played: Card[] = [];
-  private _unplayed: Card[] = [];
+  private _allCards = new Map<Suit, Map<string, Card>>();
+  private _played = new Map<Suit, Map<string, Card>>();
+  private _unplayed = new Map<Suit, Map<string, Card>>();
 
   dealCard(card: Card): void {
-    assert(this._allCards.length < CARDS_PER_HAND);
-    this._allCards.push(card);
-    if (this._allCards.length === CARDS_PER_HAND) {
-      this._allCards.sort((a, b) => {
-        if (a.suit === b.suit) {
-          return CARD_RANKS.indexOf(b.rank) - CARD_RANKS.indexOf(a.rank);
-        } else {
-          return SUITS.indexOf(b.suit) - SUITS.indexOf(a.suit);
-        }
-      });
-      this._unplayed = [...this._allCards];
+    assert(this._allCards.size < CARDS_PER_HAND && this._unplayed.size < CARDS_PER_HAND);
+    if (!this._allCards.has(card.suit)) {
+      this._allCards.set(card.suit, new Map<string, Card>());
+      this._unplayed.set(card.suit, new Map<string, Card>())
+      this._played.set(card.suit, new Map<string, Card>())
     }
+    this._allCards.get(card.suit)!.set(card.name, card);
+    this._unplayed.get(card.suit)!.set(card.name, card);
+    this._played.clear();
   }
+
 
   playCard(card: Card): void {
-    for (let i = 0; i < this._unplayed.length; i++) {
-      const c = this._unplayed[i];
-      if (c.isEqual(card)) {
-        this._unplayed.splice(i, 1);
-        this._played.push(c);
-        return;
-      }
-    }
-    assert("No matching unplayed card");
+    const match = this._unplayed.get(card.suit)?.get(card.name);
+    assert(match, "This card is not available to be played");
+    this._unplayed.get(card.suit)?.delete(match.name);
+    this._played.get(card.suit)?.set(match.name, match);
   }
 
-  get cards(): Card[] {
-    return this._allCards;
+  getAllCardsInSuit(suit: Suit): Card[] {
+    const result = Array.from(this._allCards.get(suit)?.values() || []);
+    sortCards(result);
+    return result;
+  }
+
+  getUnplayedCardsInSuit(suit: Suit): Card[] {
+    const result = Array.from(this._unplayed.get(suit)?.values() || []);
+    sortCards(result);
+    return result;
+  }
+
+  get allCards(): Card[] {
+    const result: Card[] = [];
+    for (const suit of this._allCards.values()) {
+      for (const card of suit.values()) {
+        result.push(card);
+      }
+    }
+    sortCards(result);
+    return result;
+  }
+
+  get unplayedCards(): Card[] {
+    const result: Card[] = [];
+    for (const suit of this._unplayed.values()) {
+      for (const card of suit.values()) {
+        result.push(card);
+      }
+    }
+    sortCards(result);
+    return result;
   }
 
   getEligibleToPlay(lead: Suit | null): Card[] {
-    const result: Card[] = [];
-    for (const crd of this._unplayed) {
-      if (crd.suit === lead) {
-        result.push(crd);
+    if (lead) {
+      const cardsInSuit = this.getUnplayedCardsInSuit(lead);
+      if (cardsInSuit.length > 0) {
+        return cardsInSuit;
       }
     }
-    if (result.length === 0) {
-      return [...this._unplayed];
+    return this.unplayedCards;
+  }
+
+  ensureEligibleToPlay(card: Card, lead: Suit | null): Card {
+    const inSuit = lead ? this.getUnplayedCardsInSuit(lead) : [];
+    if (inSuit.length > 0) {
+      const c = cardsInclude(inSuit, card);
+      assert(c, "This card is not eligible to be played");
+      return c;
+    } else {
+      for (const suit of this._unplayed.values()) {
+        const c = suit.get(card.name);
+        if (c) {
+          return c;
+        }
+      }
+    }
+    throw new Error("This card is not eligible to be played");
+  }
+
+  getHighestCardIfHigherThan(suit: Suit, card: Card): Card | null {
+    const cards = this.getUnplayedCardsInSuit(suit);
+    if (cards.length > 0 && cards[0].isBetter(card, 'N')) {
+      return cards[0];
+    }
+    return null;
+  }
+
+  getLowestCardHigherThan(suit: Suit, card: Card): Card | null {
+    const cards = this.getUnplayedCardsInSuit(suit);
+    for (let i = 0; i < cards.length; i++) {
+      if (cards[cards.length - 1 - i].isBetter(card, 'N')) {
+        return cards[cards.length - 1 - i];
+      }
+    }
+    return null;
+  }
+
+  getLowestCard(suit: Suit): Card | null {
+    const cards = this.getUnplayedCardsInSuit(suit);
+    if (cards.length > 0) {
+      return cards[cards.length - 1];
+    }
+    return null;
+  }
+
+  getAvailableSuits(): Suit[] {
+    const result: Suit[] = [];
+    for (const [suit, cards] of this._unplayed.entries()) {
+      if (cards.size > 0) {
+        result.push(suit);
+      }
     }
     return result;
   }
 
-  ensureEligibleToPlay(card: Card, lead: Suit | null): Card {
-    const inSuit = lead ? this.getCardsBySuit(lead, true) : [];
-    for (const c of this._unplayed) {
-      if (card.isEqual(c)) {
-        if (!lead || lead === c.suit || inSuit.length === 0) {
-          return c;
-        } else {
-          throw new Error("This card is not eligible to be played");
-        }
-      }
-    }
-    throw new Error("This card is not available");
-  }
-
-
-  getAvailableSuits(): Suit[] {
-    const result = new Set<Suit>();
-    for (const card of this._unplayed) {
-      result.add(card.suit);
-    }
-    return Array.from(result);
+  isVoid(suit: Suit): boolean {
+    return (this._allCards.get(suit)?.size || 0) === 0;
   }
 
   get highCardPoints(): number {
     let total = 0;
-    for (const card of this.cards) {
+    for (const card of this.allCards) {
       switch (card.rank) {
         case 'A':
           total += 4;
@@ -99,20 +153,9 @@ export class Hand {
     return total;
   }
 
-  getCardsBySuit(suit: Suit, availableOnly: boolean): Card[] {
-    let result: Card[] = [];
-    const candidates = availableOnly ? this._unplayed : this._allCards;
-    for (const card of candidates) {
-      if (card.suit === suit) {
-        result.push(card);
-      }
-    }
-    return result;
-  }
-
   getStoppedSuits(includeVoid: boolean): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of SUITS) {
+    for (const suit of this._allCards.keys()) {
       if (this.hasStopper(suit, includeVoid)) {
         result.add(suit);
       }
@@ -122,8 +165,18 @@ export class Hand {
 
   getWellStoppedSuits(includeVoid: boolean): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of SUITS) {
+    for (const suit of this._allCards.keys()) {
       if (this.isWellStopped(suit, includeVoid)) {
+        result.add(suit);
+      }
+    }
+    return result;
+  }
+
+  getFirstRoundStoppedSuits(includeVoid: boolean): Set<Suit> {
+    const result = new Set<Suit>();
+    for (const suit of this._allCards.keys()) {
+      if (this.hasFirstRoundStopper(suit, includeVoid)) {
         result.add(suit);
       }
     }
@@ -132,7 +185,7 @@ export class Hand {
 
   getFirstOrSecondRoundStoppedSuits(includeVoid: boolean): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of SUITS) {
+    for (const suit of this._allCards.keys()) {
       if (this.hasFirstOrSecondRoundStopper(suit, includeVoid)) {
         result.add(suit);
       }
@@ -141,56 +194,47 @@ export class Hand {
   }
 
   hasStopper(suit: Suit, includeVoid: boolean): boolean {
-    if (includeVoid) {
-      const cards = this.getCardsBySuit(suit, false);
-      if (cards.length === 0) {
-        return true;
-      }
+    if (includeVoid && this.isVoid(suit)) {
+      return true;
     }
-    return this.cardsInclude(suit, 1, 'A') ||
-      this.cardsInclude(suit, 2, 'K') ||
-      this.cardsInclude(suit, 3, 'Q') ||
-      this.cardsInclude(suit, 4, 'J') ||
-      this.getCardsBySuit(suit, false).length > 4;
+    const cardsInSuit = this.getAllCardsInSuit(suit);
+    return this.cardsInclude(cardsInSuit, 1, 'A') ||
+      this.cardsInclude(cardsInSuit, 2, 'K') ||
+      this.cardsInclude(cardsInSuit, 3, 'Q') ||
+      this.cardsInclude(cardsInSuit, 4, 'J') ||
+      cardsInSuit.length > 4;
   }
 
   isWellStopped(suit: Suit, includeVoid: boolean): boolean {
-    if (includeVoid) {
-      const cards = this.getCardsBySuit(suit, false);
-      if (cards.length === 0) {
-        return true;
-      }
+    if (includeVoid && this.isVoid(suit)) {
+      return true;
     }
-    return this.cardsInclude(suit, 2, 'A', 'K') ||
-      this.cardsInclude(suit, 3, 'A', 'Q') ||
-      this.cardsInclude(suit, 4, 'A', 'J', 'T') ||
-      this.cardsInclude(suit, 3, 'K', 'Q') ||
-      this.cardsInclude(suit, 4, 'Q', 'J') ||
-      this.getCardsBySuit(suit, false).length > 4;
+    const cardsInSuit = this.getAllCardsInSuit(suit);
+    return this.cardsInclude(cardsInSuit, 2, 'A', 'K') ||
+      this.cardsInclude(cardsInSuit, 3, 'A', 'Q') ||
+      this.cardsInclude(cardsInSuit, 4, 'A', 'J', 'T') ||
+      this.cardsInclude(cardsInSuit, 3, 'K', 'Q') ||
+      this.cardsInclude(cardsInSuit, 4, 'Q', 'J') ||
+      cardsInSuit.length > 4;
   }
 
   hasFirstRoundStopper(suit: Suit, includeVoid: boolean): boolean {
-    if (includeVoid) {
-      const cards = this.getCardsBySuit(suit, false);
-      if (cards.length === 0) {
-        return true;
-      }
+    if (includeVoid && this.isVoid(suit)) {
+      return true;
     }
-    return this.cardsInclude(suit, 1, 'A');
+    const cardsInSuit = this.getAllCardsInSuit(suit);
+    return this.cardsInclude(cardsInSuit, 1, 'A');
   }
 
   hasFirstOrSecondRoundStopper(suit: Suit, includeVoid: boolean): boolean {
-    if (includeVoid) {
-      const cards = this.getCardsBySuit(suit, false);
-      if (cards.length === 0) {
-        return true;
-      }
+    if (includeVoid && this.isVoid(suit)) {
+      return true;
     }
-    return this.cardsInclude(suit, 1, 'A') || this.cardsInclude(suit, 2, 'K');
+    const cardsInSuit = this.getAllCardsInSuit(suit);
+    return this.cardsInclude(cardsInSuit, 1, 'A') || this.cardsInclude(cardsInSuit, 2, 'K');
   }
 
-  cardsInclude(suit: Suit, minCount: number, ...ranks: CardRank[]): boolean {
-    const cards = this.getCardsBySuit(suit, false);
+  cardsInclude(cards: Card[], minCount: number, ...ranks: CardRank[]): boolean {
     if (cards.length < minCount) {
       return false;
     }
@@ -212,8 +256,8 @@ export class Hand {
   get totalPoints(): number {
     let shortnessPoints = 0;
     let lengthPoints = 0;
-    for (const suit of SUITS) {
-      const cards = this.getCardsBySuit(suit, false);
+    for (const suit of this._allCards.keys()) {
+      const cards = this.getAllCardsInSuit(suit);
       if (cards.length < 3) {
         shortnessPoints += 3 - cards.length;
       } else if (cards.length >= 5) {
@@ -225,8 +269,8 @@ export class Hand {
 
   hasNtDistribution(): boolean {
     let doubletons = 0;
-    for (const suit of SUITS) {
-      const cards = this.getCardsBySuit(suit, false);
+    for (const suit of this._allCards.keys()) {
+      const cards = this.getAllCardsInSuit(suit);
       if (cards.length < 2) {
         return false;
       }
@@ -243,8 +287,8 @@ export class Hand {
   getBestPreemptSuit(): Card[] {
     let longestSuit: Card[] = [];
     let length = 0;
-    for (const suit of SUITS) {
-      const cards = this.getCardsBySuit(suit, false);
+    for (const suit of this._allCards.keys()) {
+      const cards = this.getAllCardsInSuit(suit);
       if (cards.length >= length) {
         length = cards.length;
         longestSuit = cards;
@@ -261,7 +305,7 @@ export class Hand {
     let length = 0;
     const suits: Suit[] = ['H', 'S'];
     for (const suit of suits) {
-      const cards = this.getCardsBySuit(suit, false);
+      const cards = this.getAllCardsInSuit(suit);
       if (cards.length >= length) {
         length = cards.length;
         longestSuit = cards;
@@ -275,7 +319,7 @@ export class Hand {
     let length = 0;
     const suits: Suit[] = ['C', 'D'];
     for (const suit of suits) {
-      const cards = this.getCardsBySuit(suit, false);
+      const cards = this.getAllCardsInSuit(suit);
       if (cards.length >= length) {
         length = cards.length;
         longestSuit = cards;
@@ -284,13 +328,22 @@ export class Hand {
     return longestSuit;
   }
 
+  get numberUnplayed(): number {
+    let result = 0;
+    for (const suit of this._unplayed.values()) {
+      result += suit.size;
+    }
+    return result;
+  }
+
   toString(): string {
-    const partial = this._unplayed.length > 0 && this._unplayed.length < CARDS_PER_HAND;
+    const unplayed = this.numberUnplayed;
+    const partial = unplayed > 0 && unplayed < CARDS_PER_HAND;
     const result: string[] = [];
     for (let i = 0; i < SUITS.length; i++) {
       const suit = SUITS[SUITS.length - 1 - i];
       let row = suit + ': ';
-      const cards = this.getCardsBySuit(suit, partial);
+      const cards = partial ? this.getUnplayedCardsInSuit(suit) : this.getAllCardsInSuit(suit);
       if (cards.length === 0) {
         row += '-';
       } else {

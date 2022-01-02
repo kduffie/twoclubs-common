@@ -29,10 +29,10 @@ export async function defaultContractAssigner(board: Board): Promise<Contract | 
 function chooseContract(partnership: Partnership, vulnerable: boolean, hand1: Hand, hand2: Hand, board: Board): Contract {
   const totalPoints = hand1.totalPoints + hand2.totalPoints;
   const totalHCP = hand1.highCardPoints + hand2.highCardPoints;
-  const spades = hand1.getCardsBySuit('S', false).length + hand2.getCardsBySuit('S', false).length;
-  const hearts = hand1.getCardsBySuit('H', false).length + hand2.getCardsBySuit('H', false).length;
-  const diamonds = hand1.getCardsBySuit('D', false).length + hand2.getCardsBySuit('D', false).length;
-  const clubs = hand1.getCardsBySuit('C', false).length + hand2.getCardsBySuit('C', false).length;
+  const spades = hand1.getAllCardsInSuit('S').length + hand2.getAllCardsInSuit('S').length;
+  const hearts = hand1.getAllCardsInSuit('H').length + hand2.getAllCardsInSuit('H').length;
+  const diamonds = hand1.getAllCardsInSuit('D').length + hand2.getAllCardsInSuit('D').length;
+  const clubs = hand1.getAllCardsInSuit('C').length + hand2.getAllCardsInSuit('C').length;
   const longestMajorSuitFit = Math.max(spades, hearts);
   const longestMinorSuitFit = Math.max(diamonds, clubs);
   const longestFit = Math.max(spades, hearts, diamonds, clubs);

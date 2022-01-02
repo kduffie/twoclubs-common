@@ -194,3 +194,23 @@ export function getSuitsFromCardsExcept(cards: Card[], omitSuit: Suit | null): S
   });
   return suits;
 }
+
+export function sortCards(cards: Card[]): void {
+  cards.sort((a, b) => {
+    if (a.suit === b.suit) {
+      return CARD_RANKS.indexOf(b.rank) - CARD_RANKS.indexOf(a.rank);
+    } else {
+      return SUITS.indexOf(b.suit) - SUITS.indexOf(a.suit);
+    }
+  });
+}
+
+export function cardsInclude(cards: Card[], card: Card): Card | null {
+  for (const c of cards) {
+    if (c.isEqual(card)) {
+      return c;
+    }
+  }
+  return null;
+}
+
