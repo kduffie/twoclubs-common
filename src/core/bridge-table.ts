@@ -2,16 +2,18 @@ import { BidWithSeat } from "./bid";
 import { Board } from "./board";
 import { BoardContext, FinalBoardContext, getPartnerBySeat, getSeatFollowing, Partnership, randomlySelect, Seat, SEATS, VULNERABILITIES } from "./common";
 import { ContractAssigner, defaultContractAssigner } from "./contract-assigner";
-import { Player, PlayerBase } from "./player";
+import { Player } from "./player";
 import * as assert from 'assert';
 import { Play } from "./play";
 import { TableStats } from "./table-stats";
+import { Robot, RobotStrategy } from "./robot";
 
 export interface TableOptions {
   assignContract?: boolean;
+  robotStrategy?: RobotStrategy;
 }
 
-export class Table {
+export class BridgeTable {
   private _options: TableOptions;
   private _players = new Map<Seat, Player>();
   private _boardNumber = 1;
@@ -22,7 +24,9 @@ export class Table {
   constructor(options?: TableOptions) {
     this._options = options || {};
     for (const seat of SEATS) {
-      this._players.set(seat, new PlayerBase(seat));
+      const player = new Robot(this._options.robotStrategy);
+      player.seat = seat;
+      this._players.set(seat, player);
     }
     this._contractAssigner = defaultContractAssigner;
   }
@@ -48,7 +52,30 @@ export class Table {
   }
 
   assignPlayer(seat: Seat, player: Player): void {
+    const partner = this._players.get(getPartnerBySeat(seat))!;
+    if (!player.acceptConventions(partner.conventionCard)) {
+      throw new Error("Player is unwilling to accept partner conventions.  Try assignTeam?");
+    }
     this._players.set(seat, player);
+    player.seat = seat;
+  }
+
+  assignTeam(partnership: Partnership, players: Player[]): void {
+    assert(players.length === 2);
+    switch (partnership) {
+      case 'NS':
+        this._players.set('N', players[0]);
+        players[0].seat = 'N';
+        this._players.set('S', players[1]);
+        players[1].seat = 'N';
+        break;
+      case 'EW':
+        this._players.set('E', players[0]);
+        players[0].seat = 'E';
+        this._players.set('W', players[1]);
+        players[1].seat = 'W';
+        break;
+    }
   }
 
   async startBoard(copyFrom?: BoardContext): Promise<BoardContext> {
@@ -82,7 +109,7 @@ export class Table {
       while (board.status === 'bidding') {
         bidderSeat = getSeatFollowing(bidderSeat);
         const bidder = this._players.get(bidderSeat)!;
-        const bid = await bidder.bid(board);
+        const bid = await bidder.bid(board, board.getHand(bidderSeat));
         const fullBid = new BidWithSeat(bidderSeat, bid.type, bid.type === 'normal' ? bid.count : undefined, bid.type === 'normal' ? bid.strain : undefined);
         assert(board.isLegalFollowing(fullBid), "Illegal bid: " + fullBid.toString());
         board.bid(fullBid);

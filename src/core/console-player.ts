@@ -7,8 +7,8 @@ import { Card } from "./card";
 
 export class ConsolePlayer extends PlayerBase {
 
-  constructor(seat: Seat) {
-    super(seat);
+  constructor() {
+    super();
     prompt.start();
   }
 

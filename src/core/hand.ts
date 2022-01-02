@@ -223,6 +223,67 @@ export class Hand {
     return this.highCardPoints + Math.max(shortnessPoints, lengthPoints);
   }
 
+  hasNtDistribution(): boolean {
+    let doubletons = 0;
+    for (const suit of SUITS) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length < 2) {
+        return false;
+      }
+      if (cards.length === 2) {
+        doubletons++;
+        if (doubletons > 1) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  getBestPreemptSuit(): Card[] {
+    let longestSuit: Card[] = [];
+    let length = 0;
+    for (const suit of SUITS) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length >= length) {
+        length = cards.length;
+        longestSuit = cards;
+      }
+    }
+    if (length < 6) {
+      return [];
+    }
+    return longestSuit;
+  }
+
+  getLongestMajorSuit(): Card[] {
+    let longestSuit: Card[] = [];
+    let length = 0;
+    const suits: Suit[] = ['H', 'S'];
+    for (const suit of suits) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length >= length) {
+        length = cards.length;
+        longestSuit = cards;
+      }
+    }
+    return longestSuit;
+  }
+
+  getLongestMinorSuit(): Card[] {
+    let longestSuit: Card[] = [];
+    let length = 0;
+    const suits: Suit[] = ['C', 'D'];
+    for (const suit of suits) {
+      const cards = this.getCardsBySuit(suit, false);
+      if (cards.length >= length) {
+        length = cards.length;
+        longestSuit = cards;
+      }
+    }
+    return longestSuit;
+  }
+
   toString(): string {
     const partial = this._unplayed.length > 0 && this._unplayed.length < CARDS_PER_HAND;
     const result: string[] = [];

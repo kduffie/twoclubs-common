@@ -112,6 +112,9 @@ export function getCardsInSuit(cards: Card[], suit: Suit): Card[] {
       result.push(c);
     }
   }
+  result.sort((a, b) => {
+    return CARD_RANKS.indexOf(b.rank) - CARD_RANKS.indexOf(a.rank);
+  })
   return result;
 }
 
@@ -166,4 +169,14 @@ export function union<T>(set1: Set<T>, set2: Set<T>): Set<T> {
     result.add(value);
   }
   return result;
+}
+
+export class Range {
+  min: number;
+  max: number;
+
+  constructor(min: number, max: number) {
+    this.min = min;
+    this.max = max;
+  }
 }

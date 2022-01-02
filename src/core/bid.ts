@@ -51,6 +51,14 @@ export class Bid {
     }
   }
 
+  is(count: number, strain: Strain): boolean {
+    if (this.type === 'normal') {
+      return this.count === count && this.strain === strain;
+    } else {
+      return false;
+    }
+  }
+
   get type(): BidType {
     return this._type;
   }
