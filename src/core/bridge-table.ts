@@ -2,7 +2,7 @@ import { BidWithSeat } from "./bid";
 import { Board } from "./board";
 import { BoardContext, FinalBoardContext, getPartnerBySeat, getSeatFollowing, Partnership, randomlySelect, Seat, SEATS, VULNERABILITIES } from "./common";
 import { ContractAssigner, defaultContractAssigner } from "./contract-assigner";
-import { Player } from "./player";
+import { Player, PlayerBase } from "./player";
 import * as assert from 'assert';
 import { Play } from "./play";
 import { TableStats } from "./table-stats";
@@ -10,7 +10,6 @@ import { Robot, RobotStrategy } from "./robot";
 
 export interface TableOptions {
   assignContract?: boolean;
-  robotStrategy?: RobotStrategy;
 }
 
 export class BridgeTable {
@@ -24,7 +23,7 @@ export class BridgeTable {
   constructor(options?: TableOptions) {
     this._options = options || {};
     for (const seat of SEATS) {
-      const player = new Robot(this._options.robotStrategy);
+      const player = new PlayerBase();
       player.seat = seat;
       this._players.set(seat, player);
     }
@@ -67,7 +66,7 @@ export class BridgeTable {
         this._players.set('N', players[0]);
         players[0].seat = 'N';
         this._players.set('S', players[1]);
-        players[1].seat = 'N';
+        players[1].seat = 'S';
         break;
       case 'EW':
         this._players.set('E', players[0]);
@@ -130,6 +129,7 @@ export class BridgeTable {
           break;
         }
         const card = player.seat === dummy.seat ? await declarer.playFromDummy(board, board.getHand(seat), board.getHand(declarer.seat)) : await player.play(board, board.getHand(seat), board.getHand(dummy.seat));
+        assert(card);
         const actualCard = board.getHand(seat).ensureEligibleToPlay(card, trick.getLeadSuit());
         board.getHand(seat).playCard(actualCard)
         board.playCard(new Play(seat, actualCard));

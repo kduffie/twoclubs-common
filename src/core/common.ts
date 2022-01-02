@@ -180,3 +180,17 @@ export class Range {
     this.max = max;
   }
 }
+
+export function getSuitsFromCardsExcept(cards: Card[], omitSuit: Suit | null): Suit[] {
+  const result = new Set<Suit>();
+  for (const card of cards) {
+    if (!omitSuit || omitSuit === card.suit) {
+      result.add(card.suit);
+    }
+  }
+  const suits = Array.from(result);
+  suits.sort((a, b) => {
+    return SUITS.indexOf(b) - SUITS.indexOf(a);
+  });
+  return suits;
+}

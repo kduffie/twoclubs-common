@@ -14,10 +14,10 @@ export class Hand {
     this._allCards.push(card);
     if (this._allCards.length === CARDS_PER_HAND) {
       this._allCards.sort((a, b) => {
-        if (a.rank === b.rank) {
-          return SUITS.indexOf(b.suit) - SUITS.indexOf(a.suit);
-        } else {
+        if (a.suit === b.suit) {
           return CARD_RANKS.indexOf(b.rank) - CARD_RANKS.indexOf(a.rank);
+        } else {
+          return SUITS.indexOf(b.suit) - SUITS.indexOf(a.suit);
         }
       });
       this._unplayed = [...this._allCards];

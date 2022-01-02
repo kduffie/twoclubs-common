@@ -1,29 +1,37 @@
 import { Bid, BidWithSeat } from "./bid";
 import { Card } from "./card";
-import { BidContext, getCardsInSuit, getPartnerBySeat, PlayContext, randomlySelect, Range, Seat, Strain, Suit, SUITS } from "./common";
+import { BidContext, CardRank, CARD_RANKS, getCardsInSuit, getPartnerBySeat, getSuitsFromCardsExcept, PlayContext, randomlySelect, Range, Seat, Strain, Suit, SUITS, Partnership, getSeatsByPartnership, getPartnershipBySeat } from "./common";
 import { ConventionCard, SimpleConventionCard } from "./convention-card";
 import { Hand } from "./hand";
 import { PlayerBase } from "./player";
 import * as assert from 'assert';
+import { Play } from "./play";
+import { Trick } from "./trick";
 
 export interface RobotStrategy {
   bidding?: {
 
   }
   play?: {
-    leadingSuit?: RobotPlayLeadSuitStrategy;
-    leadingRank?: RobotPlayLeadStrategy;
-    secondHand?: RobotPlaySecondHandStrategy;
-    thirdHand?: RobotPlayThirdHandStrategy;
-    fourthHand?: RobotPlayFourthHandStrategy;
+    leadingSuitInNt?: RobotPlayLeadSuitStrategy[];
+    leadingSuitInSuit?: RobotPlayLeadSuitStrategy[];
+    leadingRank?: RobotPlayLeadRankStrategy[];
+    secondHand?: RobotPlayLeadRankStrategy[];
+    thirdHand?: RobotPlayLeadRankStrategy[];
+    fourthHand?: RobotPlayLeadRankStrategy[];
   }
 }
 
-export type RobotPlayLeadSuitStrategy = 'random';
-export type RobotPlayLeadStrategy = 'random' | 'low';
-export type RobotPlaySecondHandStrategy = 'random' | 'low' | 'cover';
-export type RobotPlayThirdHandStrategy = 'random' | 'cover' | 'high';
-export type RobotPlayFourthHandStrategy = 'random' | 'cover';
+const DEFAULT_LEADING_SUIT_IN_NT: RobotPlayLeadSuitStrategy[] = ['sticky', 'longest-except-trump-if-defender', 'longest-and-best', 'random'];
+const DEFAULT_LEADING_SUIT_IN_SUIT: RobotPlayLeadSuitStrategy[] = ['trump-if-declarer-until-exhausted', 'sticky', 'singleton', 'doubleton', 'random-except-trump', 'random'];
+
+export type RobotPlayLeadSuitStrategy = 'random' | 'random-except-trump' | 'longest-and-best' | 'longest-except-trump-if-defender' | 'trump-if-declarer-until-exhausted' | 'singleton' | 'doubleton' | 'sticky';
+export type RobotPlayLeadRankStrategy = 'random' | 'low' | 'fourth' | 'cover' | 'high-if-above' | 'top-of-honor-sequence';
+
+const DEFAULT_RANK_LEAD: RobotPlayLeadRankStrategy[] = ['top-of-honor-sequence', 'fourth', 'low'];
+const DEFAULT_RANK_SECOND_HAND: RobotPlayLeadRankStrategy[] = ['low'];
+const DEFAULT_RANK_THIRD_HAND: RobotPlayLeadRankStrategy[] = ['high-if-above', 'low']; //['high'];
+const DEFAULT_RANK_FOURTH_HAND: RobotPlayLeadRankStrategy[] = ['cover', 'low'];
 
 export class Robot extends PlayerBase {
   private _strategy: RobotStrategy;
@@ -47,84 +55,208 @@ export class Robot extends PlayerBase {
   }
 
   async playFromDummy(context: PlayContext, dummy: Hand, hand: Hand): Promise<Card> {
-    return this.play(context, dummy, dummy);
+    return this.play(context, dummy, hand);
   }
 
   async play(context: PlayContext, hand: Hand, dummy: Hand | null): Promise<Card> {
-    const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
+    const eligibleCards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
+    const suit = this.selectSuit(context, dummy, eligibleCards);
+    const suitCards = getCardsInSuit(eligibleCards, suit);
+    assert(suitCards.length > 0);
+    let rankStrategies: RobotPlayLeadRankStrategy[] = [];
     switch (context.playCurrentTrick.plays.length) {
-      case 0: {
-        let suit: Suit = 'C';
-        switch (this._strategy.play?.leadingSuit || 'random') {
-          case 'random':
-            const card = randomlySelect(cards);
-            suit = card.suit;
-        }
-        const suitCards = getCardsInSuit(cards, suit);
-        switch (this._strategy.play?.leadingRank || 'random') {
-          case 'random':
-            return randomlySelect(suitCards);
-          case 'low':
-            return suitCards[suitCards.length - 1];
-        }
-      }
-      case 1: {
-        switch (this._strategy.play?.secondHand || 'random') {
-          case 'random':
-            return randomlySelect(cards);
-          case 'low':
-            return this.getLowestCard(cards, context.playContract.strain);
-          case 'cover':
-            const currentBest = context.playCurrentTrick.getCurrentBest();
-            assert(currentBest);
-            if (currentBest.by === this.seat || currentBest.by === getPartnerBySeat(this.seat)) {
-              return this.getLowestCard(cards, context.playContract.strain);
-            } else {
-              return this.coverOrGetLowest(currentBest.card, cards, context.playContract.strain);
-            }
-        }
-      }
-      case 2: {
-        switch (this._strategy.play?.thirdHand || 'random') {
-          case 'random':
-            return randomlySelect(cards);
-          case 'cover': {
-            const currentBest = context.playCurrentTrick.getCurrentBest();
-            assert(currentBest);
-            if (currentBest.by === this.seat || currentBest.by === getPartnerBySeat(this.seat)) {
-              return this.getLowestCard(cards, context.playContract.strain);
-            } else {
-              return this.coverOrGetLowest(currentBest.card, cards, context.playContract.strain);
-            }
-          }
-          case 'high': {
-            const currentBest = context.playCurrentTrick.getCurrentBest();
-            assert(currentBest);
-            if (currentBest.by === this.seat || currentBest.by === getPartnerBySeat(this.seat)) {
-              return this.getLowestCard(cards, context.playContract.strain);
-            } else {
-              return this.getHighestOrTrumpToCover(currentBest.card, cards, context.playContract.strain);
-            }
-          }
-        }
-      }
+      case 0:
+        rankStrategies = this._strategy.play?.leadingRank && this._strategy.play.leadingRank.length > 0 ? this._strategy.play.leadingRank : DEFAULT_RANK_LEAD;
+        break;
+      case 1:
+        rankStrategies = this._strategy.play?.secondHand && this._strategy.play.secondHand.length > 0 ? this._strategy.play.secondHand : DEFAULT_RANK_SECOND_HAND;
+        break;
+      case 2:
+        rankStrategies = this._strategy.play?.thirdHand && this._strategy.play.thirdHand.length > 0 ? this._strategy.play.thirdHand : DEFAULT_RANK_THIRD_HAND;
+        break;
       case 3:
-        switch (this._strategy.play?.fourthHand || 'random') {
-          case 'random':
-            return randomlySelect(cards);
-          case 'cover': {
-            const currentBest = context.playCurrentTrick.getCurrentBest();
-            assert(currentBest);
-            if (currentBest.by === this.seat || currentBest.by === getPartnerBySeat(this.seat)) {
-              return this.getLowestCard(cards, context.playContract.strain);
-            } else {
-              return this.coverOrGetLowest(currentBest.card, cards, context.playContract.strain);
-            }
+        rankStrategies = this._strategy.play?.fourthHand && this._strategy.play.fourthHand.length > 0 ? this._strategy.play.fourthHand : DEFAULT_RANK_FOURTH_HAND;
+        break;
+      default:
+        throw new Error("Unexpected number of plays");
+    }
+    for (const strategy of rankStrategies) {
+      switch (strategy) {
+        case 'cover': {
+          const currentBest = context.playCurrentTrick.getCurrentBest();
+          assert(currentBest);
+          if (currentBest.by === this.seat || currentBest.by === getPartnerBySeat(this.seat)) {
+            return this.getLowestCard(suitCards, context.playContract.strain);
+          } else {
+            return this.coverOrGetLowest(currentBest.card, suitCards, context.playContract.strain);
           }
         }
-      default:
-        throw new Error("Unexpected number of plays on current trick");
+        case 'fourth': {
+          if (suitCards.length >= 4) {
+            return suitCards[3];
+          }
+          break;
+        }
+        case 'high-if-above':
+          return this.highestOrGetLowest(context, suitCards, context.playContract.strain)
+        case 'low':
+          return this.getLowestCard(suitCards, context.playContract.strain);
+        case 'random':
+          return randomlySelect(suitCards);
+        case 'top-of-honor-sequence': {
+          const sequence = this.getHonorSequence(suitCards);
+          if (sequence && sequence.length > 0) {
+            return sequence[0];
+          }
+          break;
+        }
+        default:
+          throw new Error("Unhandled rank strategy " + strategy);
+      }
     }
+    return randomlySelect(suitCards);
+  }
+
+  private getHonorSequence(cards: Card[]): Card[] | null {
+    const ranks: number[] = [];
+    for (let i = 0; i < cards.length - 1; i++) {
+      ranks.push(CARD_RANKS.indexOf(cards[i].rank));
+    }
+    for (let i = 0; i < cards.length - 3; i++) {
+      if (ranks[i] < 9) {
+        return null;
+      }
+      if (ranks[i] === ranks[i + 1] + 1 &&
+        ranks[i + 1] === ranks[i + 2] + 1) {
+        return [cards[i], cards[i + 1], cards[i + 2]];
+      }
+    }
+    return null;
+  }
+
+  private selectSuit(context: PlayContext, dummy: Hand | null, cards: Card[]): Suit {
+    const strategies: RobotPlayLeadSuitStrategy[] = context.playContract.strain === 'N' ? (this._strategy.play?.leadingSuitInNt && this._strategy.play?.leadingSuitInNt.length > 0 ? this._strategy.play?.leadingSuitInNt : DEFAULT_LEADING_SUIT_IN_NT) :
+      (this._strategy.play?.leadingSuitInSuit && this._strategy.play?.leadingSuitInSuit.length > 0 ? this._strategy.play?.leadingSuitInSuit : DEFAULT_LEADING_SUIT_IN_SUIT)
+    const allSuits = getSuitsFromCardsExcept(cards, null);
+    const suitsExceptTrump = context.playContract.strain === 'N' ? allSuits : getSuitsFromCardsExcept(cards, context.playContract.strain);
+    const trumpCards = context.playContract.strain !== 'N' ? getCardsInSuit(cards, context.playContract.strain) : [];
+    for (const strategy of strategies) {
+      switch (strategy) {
+        case 'doubleton': {
+          for (const suit of suitsExceptTrump) {
+            const suitCards = getCardsInSuit(cards, suit);
+            if (suitCards.length === 2) {
+              return suit;
+            }
+          }
+          break;
+        }
+        case 'longest-and-best': {
+          let bestSuit: Suit | null = null;
+          let highestRank: CardRank = '2';
+          let length = 0;
+          for (const suit of suitsExceptTrump) {
+            const suitCards = getCardsInSuit(cards, suit);
+            if (suitCards.length > length) {
+              bestSuit = suit;
+              highestRank = suitCards[0].rank;
+            } else if (suitCards.length === length && CARD_RANKS.indexOf(suitCards[0].rank) > CARD_RANKS.indexOf(highestRank)) {
+              bestSuit = suit;
+              highestRank = suitCards[0].rank;
+            }
+          }
+          if (bestSuit) {
+            return bestSuit;
+          }
+        }
+        case 'longest-except-trump-if-defender': {
+          if (context.playContract.declarer === this.seat || getPartnerBySeat(context.playContract.declarer) === this.seat) {
+            let bestSuit: Suit | null = null;
+            let highestRank: CardRank = '2';
+            let length = 0;
+            for (const suit of suitsExceptTrump) {
+              const suitCards = getCardsInSuit(cards, suit);
+              if (suitCards.length > length) {
+                bestSuit = suit;
+                highestRank = suitCards[0].rank;
+              } else if (suitCards.length === length && CARD_RANKS.indexOf(suitCards[0].rank) > CARD_RANKS.indexOf(highestRank)) {
+                bestSuit = suit;
+                highestRank = suitCards[0].rank;
+              }
+            }
+            if (bestSuit) {
+              return bestSuit;
+            }
+          }
+          break;
+        }
+        case 'random':
+          return randomlySelect(allSuits);
+        case 'random-except-trump': {
+          if (suitsExceptTrump.length > 0) {
+            return randomlySelect(suitsExceptTrump);
+          }
+        }
+        case 'singleton': {
+          for (const suit of suitsExceptTrump) {
+            const suitCards = getCardsInSuit(cards, suit);
+            if (suitCards.length === 1) {
+              return suit;
+            }
+          }
+          break;
+        }
+        case 'sticky': {
+          const suits = this.getSuitLeadsByPartnership(context.completedTricks, getPartnershipBySeat(this.seat));
+          for (const suit of suits) {
+            const suitCards = getCardsInSuit(cards, suit);
+            if (suitCards.length > 0) {
+              return suit;
+            }
+          }
+          break;
+        }
+        case 'trump-if-declarer-until-exhausted': {
+          if (trumpCards.length > 0 && context.playContract.strain !== 'N' && context.playContract.declarer !== this.seat && getPartnerBySeat(context.playContract.declarer) !== this.seat) {
+            let trumpsPlayed = 0;
+            for (const trick of context.completedTricks) {
+              for (const play of trick.plays) {
+                if (play.card.suit === context.playContract.strain) {
+                  trumpsPlayed++;
+                }
+              }
+            }
+            if (dummy) {
+              let ourTrumps = trumpCards.length + dummy.getCardsBySuit(context.playContract.strain, true).length;
+              if (trumpsPlayed + ourTrumps < CARD_RANKS.length) {
+                return context.playContract.strain;
+              }
+            }
+          }
+          break;
+        }
+        default:
+          throw new Error("Unhandled lead strategy " + strategy);
+      }
+    }
+    if (context.playContract.strain !== 'N' && trumpCards.length > 0) {
+      return context.playContract.strain;
+    }
+    return randomlySelect(cards).suit;
+  }
+
+
+  private getSuitLeadsByPartnership(tricks: Trick[], partnership: Partnership): Suit[] {
+    const result: Suit[] = [];
+    const seats = getSeatsByPartnership(partnership);
+    for (const trick of tricks) {
+      if (seats.indexOf(trick.lead) >= 0) {
+        if (result.indexOf(trick.plays[0].card.suit)) {
+          result.push(trick.plays[0].card.suit);
+        }
+      }
+    }
+    return result;
   }
 
   private getHighestOrTrumpToCover(currentBest: Card, cards: Card[], trump: Strain): Card {
@@ -161,20 +293,44 @@ export class Robot extends PlayerBase {
     return lowestCard;
   }
 
+  private highestOrGetLowest(context: PlayContext, cards: Card[], trump: Strain): Card {
+    assert(cards.length > 0);
+    const bestPlay = context.playCurrentTrick.getCurrentBest();
+    const bestSoFar = bestPlay ? bestPlay.card : null;
+    let lowestCard: Card | null = null;
+    let highestCard: Card | null = null;
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      if (!lowestCard || lowestCard.isBetter(card, trump)) {
+        lowestCard = card;
+      }
+      if (card.suit === trump && bestSoFar && bestSoFar.suit !== trump) {
+        if (card.isBetter(bestSoFar, trump) && (!highestCard || highestCard.isBetter(card, trump))) {
+          highestCard = card;
+        }
+      } else if (bestSoFar) {
+        if (card.isBetter(bestSoFar, trump) && (!highestCard || card.isBetter(highestCard, trump))) {
+          highestCard = card;
+        }
+      }
+    }
+    return highestCard || lowestCard || cards[0];
+  }
+
   private coverOrGetLowest(bestSoFar: Card, cards: Card[], trump: Strain): Card {
     assert(cards.length > 0);
-    let lowestCard: Card = cards[0];
+    let lowestCard: Card | null = null;
     let lowestCover: Card | null = null;
-    for (let i = 1; i < cards.length; i++) {
+    for (let i = 0; i < cards.length; i++) {
       const card = cards[i];
-      if (lowestCard.isBetter(card, trump)) {
+      if (!lowestCard || lowestCard.isBetter(card, trump)) {
         lowestCard = card;
       }
       if (card.isBetter(bestSoFar, trump) && (!lowestCover || lowestCover.isBetter(card, trump))) {
         lowestCover = card;
       }
     }
-    return lowestCover || lowestCard;
+    return lowestCover || lowestCard || cards[0];
   }
 
   private getOpeningBid(context: BidContext, hand: Hand): Bid {
