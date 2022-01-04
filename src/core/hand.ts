@@ -285,47 +285,91 @@ export class Hand {
   }
 
   getBestPreemptSuit(): Card[] {
-    let longestSuit: Card[] = [];
-    let length = 0;
-    for (const suit of this._allCards.keys()) {
-      const cards = this.getAllCardsInSuit(suit);
-      if (cards.length >= length) {
-        length = cards.length;
-        longestSuit = cards;
-      }
+    const bestSuit = this.getBestSuit();
+    if (bestSuit.length > 6) {
+      return bestSuit;
     }
-    if (length < 6) {
-      return [];
+    if (bestSuit.length === 6 && bestSuit[0].suit !== 'C') {
+      return bestSuit;
     }
-    return longestSuit;
+    return [];
   }
 
-  getLongestMajorSuit(): Card[] {
-    let longestSuit: Card[] = [];
-    let length = 0;
-    const suits: Suit[] = ['H', 'S'];
-    for (const suit of suits) {
-      const cards = this.getAllCardsInSuit(suit);
-      if (cards.length >= length) {
-        length = cards.length;
-        longestSuit = cards;
-      }
+  getBestSuit(): Card[] {
+    const major = this.getBestMajorSuit();
+    const minor = this.getBestMinorSuit();
+    const diff = this.compareSuits(major, minor);
+    if (diff < 0) {
+      return minor;
+    } else {
+      return major;
     }
-    return longestSuit;
+
   }
 
-  getLongestMinorSuit(): Card[] {
-    let longestSuit: Card[] = [];
-    let length = 0;
-    const suits: Suit[] = ['C', 'D'];
-    for (const suit of suits) {
-      const cards = this.getAllCardsInSuit(suit);
-      if (cards.length >= length) {
-        length = cards.length;
-        longestSuit = cards;
+  compareSuits(suit1: Card[], suit2: Card[]): number {
+    if (suit1.length > suit2.length) {
+      return 1;
+    } else if (suit1.length < suit2.length) {
+      return -1;
+    }
+    const hcp1 = this.getHcpFromCards(suit1);
+    const hcp2 = this.getHcpFromCards(suit2);
+    if (hcp1 > hcp2) {
+      return 1;
+    } else if (hcp1 < hcp2) {
+      return -1;
+    }
+    for (let i = 0; i < Math.min(suit1.length, suit2.length); i++) {
+      const diff = CARD_RANKS.indexOf(suit1[i].rank) - CARD_RANKS.indexOf(suit2[i].rank);
+      if (diff !== 0) {
+        return diff;
       }
     }
-    return longestSuit;
+    return 0;
+  }
+
+  getHcpFromCards(cards: Card[]): number {
+    let result = 0;
+    for (const card of cards) {
+      switch (card.rank) {
+        case 'A':
+          result += 4;
+          break;
+        case 'K':
+          result += 3;
+          break;
+        case 'Q':
+          result += 2;
+          break;
+        case 'J':
+          result += 1;
+          break;
+      }
+    }
+    return result;
+  }
+
+  getBestMajorSuit(): Card[] {
+    const spades = this.getAllCardsInSuit('S');
+    const hearts = this.getAllCardsInSuit('H');
+    const diff = this.compareSuits(spades, hearts);
+    if (diff < 0) {
+      return hearts;
+    } else {
+      return spades;
+    }
+  }
+
+  getBestMinorSuit(): Card[] {
+    const diamonds = this.getAllCardsInSuit('D');
+    const clubs = this.getAllCardsInSuit('C');
+    const diff = this.compareSuits(diamonds, clubs);
+    if (diff < 0) {
+      return clubs;
+    } else {
+      return diamonds;
+    }
   }
 
   get numberUnplayed(): number {
@@ -354,6 +398,6 @@ export class Hand {
       result.push(padded);
     }
     const cards = result.join(' ');
-    return cards + (partial ? '' : (` ${this.highCardPoints < 10 ? ' ' : ''}(${this.highCardPoints})  `));
+    return cards + (partial ? '' : (` ${this.highCardPoints < 10 ? ' ' : ''}(${this.highCardPoints} ${this.totalPoints < 10 ? ' ' : ''}${this.totalPoints})  `));
   }
 }

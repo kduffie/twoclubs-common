@@ -1,4 +1,4 @@
-import { BidWithSeat } from "./bid";
+import { Bid, BidWithSeat } from "./bid";
 import { Card } from "./card";
 import { Contract } from "./contract";
 import { Trick } from "./trick";
@@ -6,6 +6,7 @@ import * as shuffle from 'shuffle-array';
 import { assert } from "console";
 import { Auction } from "./auction";
 import { Hand } from "./hand";
+import { rng } from "./rng";
 
 
 export type Seat = 'N' | 'E' | 'S' | 'W';
@@ -56,6 +57,21 @@ export function getSeatFollowing(seat: Seat): Seat {
       return 'W';
     case 'W':
       return 'N';
+    default:
+      throw new Error("Unexpected seat " + seat);
+  }
+}
+
+export function getSeatPreceding(seat: Seat): Seat {
+  switch (seat) {
+    case 'N':
+      return 'W';
+    case 'E':
+      return 'N';
+    case 'S':
+      return 'E';
+    case 'W':
+      return 'S';
     default:
       throw new Error("Unexpected seat " + seat);
   }
@@ -156,7 +172,7 @@ export interface PlayContext {
 
 export function randomlySelect<T>(candidates: T[]): T {
   assert(candidates.length > 0);
-  const result = shuffle.pick(candidates);
+  const result = shuffle.pick(candidates, { rng: rng });
   return Array.isArray(result) ? result[0] : result;
 }
 
@@ -213,4 +229,3 @@ export function cardsInclude(cards: Card[], card: Card): Card | null {
   }
   return null;
 }
-

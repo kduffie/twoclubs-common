@@ -1,12 +1,15 @@
-import { Robot } from "../core/robot";
 import { BridgeTable } from "../core/bridge-table";
+import { DuffieRobot } from "../duffie/duffie-robot";
+import { randomGenerator } from "../core/rng";
+import { BridgePlayerBase } from "../core/player";
 
 async function run() {
-  const table = new BridgeTable({ assignContract: true });
-  const r1 = new Robot();
-  const r2 = new Robot();
-  const r3 = new Robot({ play: { thirdHand: ['cover', 'low'] } });
-  const r4 = new Robot({ play: { thirdHand: ['cover', 'low'] } });
+  // randomGenerator.seed = '6';
+  const table = new BridgeTable({ assignContract: false });
+  const r1 = new DuffieRobot();
+  const r2 = new DuffieRobot();
+  const r3 = new BridgePlayerBase();
+  const r4 = new BridgePlayerBase();
   table.assignTeam('NS', [r1, r2]);
   table.assignTeam('EW', [r3, r4]);
   for (let i = 1; ; i++) {

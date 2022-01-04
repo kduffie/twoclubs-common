@@ -5,20 +5,29 @@ import { ConventionCard, SimpleConventionCard } from "./convention-card";
 import { Hand } from "./hand";
 
 
-export interface Player {
+export interface BridgeBidder {
   seat: Seat;
+  conventionCard: ConventionCard;
+  acceptConventions(conventionCard: ConventionCard): boolean;
   startBoard: (context: BoardContext) => Promise<void>;
   bid: (context: BidContext, hand: Hand) => Promise<Bid>;
+
+}
+
+export interface BridgeCardPlayer {
+  seat: Seat;
   startPlay: (context: PlayContext) => Promise<void>;
   play: (context: PlayContext, hand: Hand, dummy: Hand | null) => Promise<Card>;
   playFromDummy(context: PlayContext, dummy: Hand, hand: Hand): Promise<Card>;
   finishPlay: (context: FinalBoardContext) => Promise<void>;
-  conventionCard: ConventionCard;
-  acceptConventions(conventionCard: ConventionCard): boolean;
 }
 
-export class PlayerBase implements Player {
-  private _seat: Seat = 'N';
+export interface BridgePlayer extends BridgeBidder, BridgeCardPlayer {
+  seat: Seat;
+}
+
+export class BridgePlayerBase implements BridgePlayer {
+  protected _seat: Seat = 'N';
   protected _conventionCard = new SimpleConventionCard('none');
 
   get seat(): Seat {

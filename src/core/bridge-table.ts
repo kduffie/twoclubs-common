@@ -2,11 +2,10 @@ import { BidWithSeat } from "./bid";
 import { Board } from "./board";
 import { BoardContext, FinalBoardContext, getPartnerBySeat, getSeatFollowing, Partnership, randomlySelect, Seat, SEATS, VULNERABILITIES } from "./common";
 import { ContractAssigner, defaultContractAssigner } from "./contract-assigner";
-import { Player, PlayerBase } from "./player";
+import { BridgePlayer, BridgePlayerBase } from "./player";
 import * as assert from 'assert';
 import { Play } from "./play";
 import { TableStats } from "./table-stats";
-import { Robot, RobotStrategy } from "./robot";
 
 export interface TableOptions {
   assignContract?: boolean;
@@ -14,23 +13,23 @@ export interface TableOptions {
 
 export class BridgeTable {
   private _options: TableOptions;
-  private _players = new Map<Seat, Player>();
+  private _players = new Map<Seat, BridgePlayer>();
   private _boardNumber = 1;
   private _currentBoard: Board | null = null;
   private _contractAssigner: ContractAssigner;
   private _tableStats = new TableStats();
 
-  constructor(options?: TableOptions) {
+  constructor(options?: TableOptions, contractAssigner?: ContractAssigner) {
     this._options = options || {};
     for (const seat of SEATS) {
-      const player = new PlayerBase();
+      const player = new BridgePlayerBase();
       player.seat = seat;
       this._players.set(seat, player);
     }
-    this._contractAssigner = defaultContractAssigner;
+    this._contractAssigner = contractAssigner || defaultContractAssigner;
   }
 
-  get players(): Map<Seat, Player> {
+  get players(): Map<Seat, BridgePlayer> {
     return this._players
   }
 
@@ -46,11 +45,7 @@ export class BridgeTable {
     return this._contractAssigner;
   }
 
-  set contractAssigner(value: ContractAssigner) {
-    this._contractAssigner = value;
-  }
-
-  assignPlayer(seat: Seat, player: Player): void {
+  assignPlayer(seat: Seat, player: BridgePlayer): void {
     const partner = this._players.get(getPartnerBySeat(seat))!;
     if (!player.acceptConventions(partner.conventionCard)) {
       throw new Error("Player is unwilling to accept partner conventions.  Try assignTeam?");
@@ -59,7 +54,7 @@ export class BridgeTable {
     player.seat = seat;
   }
 
-  assignTeam(partnership: Partnership, players: Player[]): void {
+  assignTeam(partnership: Partnership, players: BridgePlayer[]): void {
     assert(players.length === 2);
     switch (partnership) {
       case 'NS':
@@ -96,10 +91,10 @@ export class BridgeTable {
       this._players.get(seat)!.startBoard(this._currentBoard);
     }
     board.start();
+    const recommendedContract = await this._contractAssigner(board);
     if (this._options.assignContract) {
-      const contract = await this._contractAssigner(board);
-      if (contract) {
-        board.setContract(contract);
+      if (recommendedContract) {
+        board.setContract(recommendedContract);
       } else {
         board.passOut();
       }
@@ -128,10 +123,9 @@ export class BridgeTable {
         if (!trick) {
           break;
         }
-        const card = player.seat === dummy.seat ? await declarer.playFromDummy(board, board.getHand(seat), board.getHand(declarer.seat)) : await player.play(board, board.getHand(seat), board.getHand(dummy.seat));
+        const card = seat === dummy.seat ? await declarer.playFromDummy(board, board.getHand(seat), board.getHand(declarer.seat)) : await player.play(board, board.getHand(seat), board.getHand(dummy.seat));
         assert(card);
         const actualCard = board.getHand(seat).ensureEligibleToPlay(card, trick.getLeadSuit());
-        board.getHand(seat).playCard(actualCard)
         board.playCard(new Play(seat, actualCard));
         const next = board.getNextPlayer();
         if (!next) {
@@ -140,7 +134,7 @@ export class BridgeTable {
         seat = next;
       }
     }
-    this._tableStats.processBoard(board);
+    this._tableStats.processBoard(board, recommendedContract);
     return board;
   }
 }

@@ -3,11 +3,11 @@ import { Card } from "./card";
 import { BidContext, CardRank, CARD_RANKS, getCardsInSuit, getPartnerBySeat, getSuitsFromCardsExcept, PlayContext, randomlySelect, Range, Seat, Strain, Suit, SUITS, Partnership, getSeatsByPartnership, getPartnershipBySeat } from "./common";
 import { ConventionCard, SimpleConventionCard } from "./convention-card";
 import { Hand } from "./hand";
-import { PlayerBase } from "./player";
+import { BridgePlayerBase } from "./player";
 import * as assert from 'assert';
 import { Trick } from "./trick";
 
-export interface RobotStrategy {
+export interface OriginalRobotStrategy {
   bidding?: {
 
   }
@@ -32,14 +32,13 @@ const DEFAULT_RANK_SECOND_HAND: RobotPlayLeadRankStrategy[] = ['low'];
 const DEFAULT_RANK_THIRD_HAND: RobotPlayLeadRankStrategy[] = ['high-if-above', 'low']; //['high'];
 const DEFAULT_RANK_FOURTH_HAND: RobotPlayLeadRankStrategy[] = ['cover', 'low'];
 
-export class Robot extends PlayerBase {
-  private _strategy: RobotStrategy;
+export class RobotOriginal extends BridgePlayerBase {
+  private _strategy: OriginalRobotStrategy;
 
-  constructor(strategies?: RobotStrategy) {
+  constructor(strategies?: OriginalRobotStrategy) {
     super();
     this._conventionCard = new SimpleConventionCard('dbs');
     this._strategy = strategies || {};
-    const foo = new Set<Object>();
   }
 
   get conventionCard(): ConventionCard {
@@ -250,7 +249,7 @@ export class Robot extends PlayerBase {
     const result: Suit[] = [];
     const seats = getSeatsByPartnership(partnership);
     for (const trick of tricks) {
-      if (seats.indexOf(trick.lead) >= 0) {
+      if (seats.indexOf(trick.leader) >= 0) {
         if (result.indexOf(trick.plays[0].card.suit)) {
           result.push(trick.plays[0].card.suit);
         }
@@ -335,8 +334,8 @@ export class Robot extends PlayerBase {
 
   private getOpeningBid(context: BidContext, hand: Hand): Bid {
     const preemptSuit = hand.getBestPreemptSuit();
-    const bestMajor = hand.getLongestMajorSuit();
-    const bestMinor = hand.getLongestMinorSuit();
+    const bestMajor = hand.getBestMajorSuit();
+    const bestMinor = hand.getBestMinorSuit();
     if (hand.totalPoints < 6) {
       return new Bid('pass');
     } else if (hand.highCardPoints >= 22) {
@@ -357,9 +356,9 @@ export class Robot extends PlayerBase {
   }
 
   private getFollowingBid(context: BidContext, hand: Hand): Bid {
-    const partnerBids = context.auction.getPartnerBids(this.seat);
-    const longestMajor = hand.getLongestMajorSuit();
-    const longestMinor = hand.getLongestMinorSuit();
+    const partnerBids = context.auction.getPartnerBids(this.seat, false);
+    const longestMajor = hand.getBestMajorSuit();
+    const longestMinor = hand.getBestMinorSuit();
     const longestSuit = longestMajor.length >= longestMinor.length ? longestMajor : longestMinor;
     if (partnerBids.length > 0 && partnerBids[0].is(2, 'C')) {
       if (context.auction.lastBid) {

@@ -9,6 +9,7 @@ import { Bid, BidWithSeat } from "./bid";
 import { Trick } from "./trick";
 import { Play } from "./play";
 import { Auction } from "./auction";
+import { rng } from "./rng";
 
 export class Board implements FinalBoardContext, BidContext, PlayContext {
   private _id: string;
@@ -38,7 +39,7 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
     for (let i = 0; i < CARD_RANKS.length * SUITS.length; i++) {
       cardIndexes.push(i);
     }
-    shuffle(cardIndexes);
+    shuffle(cardIndexes, { rng: rng });
     const hands = new Map<Seat, Hand>();
     for (const seat of SEATS) {
       hands.set(seat, new Hand());
@@ -218,7 +219,7 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
         return true;
       case 'normal': {
         const lastNormal = this.getLastNormalBid();
-        return lastNormal && bid.isLarger(lastNormal) ? true : false;
+        return (!lastNormal || lastNormal && bid.isLarger(lastNormal)) ? true : false;
       }
       case 'double': {
         if (this.bids.length === 0) {
@@ -408,6 +409,9 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
     result.push(`         West:  ${this._handsBySeat.get('W')!.toString()}`);
     if (this._contract) {
       result.push(`  Contract: ${this._contract.toString()}`);
+      if (this.auction) {
+        result.push(`  Auction:\n${this.auction.toString()}`);
+      }
     } else if (this._passedOut) {
       result.push(`  Passed out`);
     }

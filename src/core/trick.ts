@@ -5,21 +5,21 @@ import * as assert from 'assert';
 
 export class Trick {
   private _board: Board;
-  private _lead: Seat;
+  private _leader: Seat;
   private _plays: Play[] = [];
   private _winningIndex = -1;
 
-  constructor(board: Board, lead: Seat) {
+  constructor(board: Board, leader: Seat) {
     this._board = board;
-    this._lead = lead;
+    this._leader = leader;
   }
 
   get plays(): Play[] {
     return this._plays;
   }
 
-  get lead(): Seat {
-    return this._lead;
+  get leader(): Seat {
+    return this._leader;
   }
 
   get winner(): Play | null {
@@ -38,7 +38,7 @@ export class Trick {
 
   playCard(play: Play): Play | null {
     if (this.plays.length === 0) {
-      assert(play.by === this._lead);
+      assert(play.by === this._leader);
     } else {
       assert(play.by === getSeatFollowing(this.plays[this.plays.length - 1].by));
     }

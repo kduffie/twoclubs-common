@@ -1,5 +1,5 @@
 import { Bid } from './bid';
-import { Seat, Strain, Doubling, MAX_CONTRACT_SIZE, Partnership, getPartnershipBySeat, SlamType } from './common';
+import { Seat, Strain, Doubling, MAX_CONTRACT_SIZE, Partnership, getPartnershipBySeat, SlamType, STRAINS } from './common';
 import * as assert from 'assert';
 
 export class Contract {
@@ -40,6 +40,19 @@ export class Contract {
 
   get doubling(): Doubling {
     return this._doubling;
+  }
+
+  isHigher(other: Contract | null): boolean {
+    if (!other) {
+      return true;
+    }
+    if (this.count > other.count) {
+      return true;
+    }
+    if (this.count < other.count) {
+      return false;
+    }
+    return STRAINS.indexOf(this.strain) > STRAINS.indexOf(other.strain);
   }
 
 

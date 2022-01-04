@@ -1,11 +1,11 @@
 import { Bid, BID_PATTERN } from "./bid";
 import { BidContext, BoardContext, FinalBoardContext, PlayContext, Seat, getSeatName } from "./common";
-import { PlayerBase } from "./player";
+import { BridgePlayerBase } from "./player";
 import * as prompt from 'prompt';
 import { Hand } from "./hand";
 import { Card } from "./card";
 
-export class ConsolePlayer extends PlayerBase {
+export class ConsolePlayer extends BridgePlayerBase {
 
   constructor() {
     super();

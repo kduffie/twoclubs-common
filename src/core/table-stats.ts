@@ -2,6 +2,7 @@
 import { FinalBoardContext, getOpposingPartnership, Partnership } from "./common";
 import * as assert from 'assert';
 import { sprintf } from 'sprintf-js';
+import { Contract } from "./contract";
 
 export class TableStats {
   private _partnershipStats = new Map<Partnership, PartnershipStats>();
@@ -10,13 +11,13 @@ export class TableStats {
     this._partnershipStats.set('NS', new PartnershipStats('NS'));
     this._partnershipStats.set('EW', new PartnershipStats('EW'));
   }
-  async processBoard(board: FinalBoardContext): Promise<void> {
+  async processBoard(board: FinalBoardContext, recommendedContract: Contract | null): Promise<void> {
     if (board.contract) {
-      await this._partnershipStats.get(board.contract.partnership)!.processDeclarerBoard(board);
-      await this._partnershipStats.get(getOpposingPartnership(board.contract.partnership))!.processDefenderBoard(board);
+      await this._partnershipStats.get(board.contract.partnership)!.processDeclarerBoard(board, recommendedContract);
+      await this._partnershipStats.get(getOpposingPartnership(board.contract.partnership))!.processDefenderBoard(board, recommendedContract);
     } else {
-      await this._partnershipStats.get('NS')!.processPassedBoard(board);
-      await this._partnershipStats.get('EW')!.processPassedBoard(board);
+      await this._partnershipStats.get('NS')!.processPassedBoard(board, recommendedContract);
+      await this._partnershipStats.get('EW')!.processPassedBoard(board, recommendedContract);
     }
   }
 
@@ -32,7 +33,12 @@ export class PartnershipStats {
   private _partnership: Partnership;
   private _allBoards = new SituationalStats('all', 'All boards');
   private _passedBoards = new SituationalStats('passed-out', 'Passed out boards');
+  private _passedWhenRecommended = new SituationalStats('passed-when-recommended-contract', 'Passed when contract recommended');
   private _declarerBoards = new SituationalStats('declarer', 'When declarer');
+  private _declarerWhenSameAsRecommended = new SituationalStats('declarer-when-recommended', 'Declarer when recommended contract');
+  private _declarerWhenRecommendedHigher = new SituationalStats('declarer-when-recommended-higher', 'Declarer when recommended contract was higher');
+  private _declarerWhenRecommendedLower = new SituationalStats('declarer-when-recommended-lower', 'Declarer when recommended contract was lower');
+  private _declarerWhenNotRecommended = new SituationalStats('declarer-when-recommended-lower', 'Declarer when passing was recommended');
   private _defenderBoards = new SituationalStats('defender', 'When defending');
   private _vulDeclarerBoards = new SituationalStats('declarer-vul', 'When declarer and vulnerable');
   private _nonVulDeclarerBoards = new SituationalStats('declarer', 'When declarer and non-vulnerable');
@@ -77,6 +83,12 @@ export class PartnershipStats {
     result.push(this._gameDeclarerBoards);
     result.push(this._partScoreDeclarerBoards);
 
+    result.push(this._passedWhenRecommended);
+    result.push(this._declarerWhenSameAsRecommended);
+    result.push(this._declarerWhenRecommendedHigher);
+    result.push(this._declarerWhenRecommendedLower);
+    result.push(this._declarerWhenNotRecommended);
+
     result.push(this._ntGameDeclarerBoards);
     result.push(this._majorGameDeclarerBoards);
     result.push(this._minorGameDeclarerBoards);
@@ -97,10 +109,21 @@ export class PartnershipStats {
     return result;
   }
 
-  async processDeclarerBoard(board: FinalBoardContext): Promise<void> {
+  async processDeclarerBoard(board: FinalBoardContext, recommendedContract: Contract | null): Promise<void> {
     assert(board.contract);
     this._allBoards.processBoard(board, true);
     this._declarerBoards.processBoard(board, true);
+    if (recommendedContract) {
+      if (recommendedContract.count === board.contract.count && recommendedContract.strain === board.contract.strain) {
+        this._declarerWhenSameAsRecommended.processBoard(board, true);
+      } else if (recommendedContract.isHigher(board.contract)) {
+        this._declarerWhenRecommendedHigher.processBoard(board, true);
+      } else {
+        this._declarerWhenRecommendedLower.processBoard(board, true);
+      }
+    } else {
+      this._declarerWhenNotRecommended.processBoard(board, true);
+    }
     if (board.contract.strain === 'N') {
       this._ntDeclarerBoards.processBoard(board, true);
     } else {
@@ -133,7 +156,7 @@ export class PartnershipStats {
     }
   }
 
-  async processDefenderBoard(board: FinalBoardContext): Promise<void> {
+  async processDefenderBoard(board: FinalBoardContext, recommendedContract: Contract | null): Promise<void> {
     assert(board.contract);
     this._allBoards.processBoard(board, false);
     this._defenderBoards.processBoard(board, false);
@@ -169,9 +192,12 @@ export class PartnershipStats {
     }
   }
 
-  async processPassedBoard(board: FinalBoardContext): Promise<void> {
+  async processPassedBoard(board: FinalBoardContext, recommendedContract: Contract | null): Promise<void> {
     this._allBoards.processBoard(board, false);
     this._passedBoards.processBoard(board, false);
+    if (recommendedContract) {
+      this._passedWhenRecommended.processBoard(board, false);
+    }
   }
 
   toString(): string {

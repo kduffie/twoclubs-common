@@ -4,7 +4,7 @@ export interface ConventionCard {
   // TODO: add various conventions
 }
 
-export type OverallApproach = 'none' | 'dbs' | 'standard-american' | 'other';
+export type OverallApproach = 'none' | 'dbs' | 'bbs' | 'standard-american' | 'other';
 
 export class SimpleConventionCard implements ConventionCard {
   private _approach: OverallApproach;

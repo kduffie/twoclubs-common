@@ -72,9 +72,39 @@ export class Bid {
     return this._strain!;
   }
 
-  isLarger(bid: Bid): boolean {
-    assert(this.type === 'normal' && bid.type === 'normal');
+  isLarger(bid: Bid | null): boolean {
+    if (!bid) {
+      return true;
+    }
+    if (bid.type !== 'normal' && this.type === 'normal') {
+      return true;
+    }
+    if (this.type !== 'normal') {
+      return false;
+    }
     return this.count > bid.count || (this.count === bid.count && STRAINS.indexOf(this.strain) > STRAINS.indexOf(bid.strain));
+  }
+
+  isGameBonusApplicable(): boolean {
+    if (this.type === 'normal') {
+      switch (this.strain) {
+        case 'C':
+        case 'D':
+          return this.count >= 5;
+        case 'H':
+        case 'S':
+          return this.count >= 4;
+        case 'N':
+          return this.count >= 3;
+      }
+    } else {
+      return false;
+    }
+  }
+
+
+  isEqual(bid: Bid): boolean {
+    return this.type === bid.type && this.count === bid.count && this.strain === bid.strain;
   }
 
   toString(): string {
