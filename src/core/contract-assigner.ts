@@ -36,10 +36,10 @@ function chooseContract(partnership: Partnership, vulnerable: boolean, hand1: Ha
   const longestMajorSuitFit = Math.max(spades, hearts);
   const longestMinorSuitFit = Math.max(diamonds, clubs);
   const longestFit = Math.max(spades, hearts, diamonds, clubs);
-  const stoppedSuitsInNT = union(hand1.getStoppedSuits(false), hand2.getStoppedSuits(false));
-  const wellStoppedSuitsInNT = union(hand1.getWellStoppedSuits(false), hand2.getWellStoppedSuits(false));
-  const slamStoppedSuitsInNT = union(hand1.getFirstOrSecondRoundStoppedSuits(false), hand2.getFirstOrSecondRoundStoppedSuits(false));
-  const slamStoppedSuitsInSuit = union(hand1.getFirstOrSecondRoundStoppedSuits(true), hand2.getFirstOrSecondRoundStoppedSuits(true));
+  const stoppedSuitsInNT = union(hand1.allCards.getStoppedSuits(), hand2.allCards.getStoppedSuits());
+  const wellStoppedSuitsInNT = union(hand1.allCards.getWellStoppedSuits(), hand2.allCards.getWellStoppedSuits());
+  const slamStoppedSuitsInNT = union(hand1.allCards.getFirstOrSecondRoundStoppedSuits(false), hand2.allCards.getFirstOrSecondRoundStoppedSuits(false));
+  const slamStoppedSuitsInSuit = union(hand1.allCards.getFirstOrSecondRoundStoppedSuits(true), hand2.allCards.getFirstOrSecondRoundStoppedSuits(true));
   const bestFit: Suit = spades === longestFit ? 'S' : (hearts === longestFit ? 'H' : (diamonds === longestFit ? 'D' : 'C'));
   const bestMajorSuitFit: Suit = spades >= hearts ? 'S' : 'H';
   const bestMinorSuitFit: Suit = diamonds > clubs ? 'D' : 'C';

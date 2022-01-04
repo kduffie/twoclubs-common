@@ -59,12 +59,12 @@ export class BbsBidder implements BridgeBidder {
     const bestMajor = hand.getBestMajorSuit();
     const bestMinor = hand.getBestMinorSuit();
     const bestSuit = hand.getBestSuit();
-    if (hand.highCardPoints >= 23 && hand.hasNtDistribution() && hand.getWellStoppedSuits(false).size == 4) {
+    if (hand.highCardPoints >= 23 && hand.hasNtDistribution() && hand.allCards.getWellStoppedSuits().size == 4) {
       return new Bid('normal', 3, 'N');
     } else if (hand.totalPoints >= 25 && bestMajor.length >= 7) {
-      return new Bid('normal', 4, bestMajor[0].suit);
+      return new Bid('normal', 4, bestMajor.suit);
     } else if (hand.totalPoints >= 27 && bestMinor.length >= 8) {
-      return new Bid('normal', 5, bestMinor[0].suit);
+      return new Bid('normal', 5, bestMinor.suit);
     } else if (hand.highCardPoints >= 19 && hand.hasNtDistribution()) {
       return new Bid('normal', 2, 'N');
     } else if (hand.highCardPoints >= 14 && hand.hasNtDistribution()) {
@@ -72,14 +72,14 @@ export class BbsBidder implements BridgeBidder {
     } else if (hand.totalPoints >= 13 && bestSuit.length >= 5) {
       const preferredSuit = bestMajor.length >= 5 ? bestMajor : bestMinor;
       if (hand.totalPoints >= 19) {
-        return new Bid('normal', 3, preferredSuit[0].suit);
+        return new Bid('normal', 3, preferredSuit.suit);
       } else if (hand.totalPoints >= 16) {
-        return new Bid('normal', 2, preferredSuit[0].suit);
+        return new Bid('normal', 2, preferredSuit.suit);
       } else {
-        return new Bid('normal', 1, preferredSuit[0].suit);
+        return new Bid('normal', 1, preferredSuit.suit);
       }
     } else if (hand.totalPoints >= 13) {
-      return new Bid('normal', 1, bestSuit[0].suit);
+      return new Bid('normal', 1, bestSuit.suit);
     }
     return new Bid('pass');
   }
@@ -108,7 +108,7 @@ export class BbsBidder implements BridgeBidder {
     } else {
       const bestSuit = hand.getBestSuit();
       if (bestSuit.length >= 6) {
-        return new Bid('normal', 3, bestSuit[0].suit);
+        return new Bid('normal', 3, bestSuit.suit);
       }
     }
     return new Bid('pass');
@@ -135,7 +135,7 @@ export class BbsBidder implements BridgeBidder {
     if (combined >= 24) {
       const bestMajor = hand.getBestMajorSuit();
       if (bestMajor.length >= 5) {
-        return new Bid('normal', 3, bestMajor[0].suit);
+        return new Bid('normal', 3, bestMajor.suit);
       } else {
         return new Bid('normal', 3, 'N');
       }

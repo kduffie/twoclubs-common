@@ -5,6 +5,7 @@ import { BridgeBidder } from "../core/player";
 import { Bid, BidWithSeat } from "../core/bid";
 import * as assert from 'assert';
 import { Card } from "../core/card";
+import { CardSet } from "../core/card-set";
 
 export class DuffieBidder implements BridgeBidder {
   private _seat: Seat = 'N';
@@ -63,7 +64,7 @@ export class DuffieBidder implements BridgeBidder {
     }
   }
   private getOpeningBid(context: BidContext, hand: Hand): Bid {
-    const preemptSuit = hand.getBestPreemptSuit();
+    // const preemptSuit = hand.getBestPreemptSuit();
     const bestMajor = hand.getBestMajorSuit();
     const bestMinor = hand.getBestMinorSuit();
     if (hand.totalPoints < 6) {
@@ -74,12 +75,12 @@ export class DuffieBidder implements BridgeBidder {
       return new Bid('normal', 2, 'N');
     } else if (hand.highCardPoints >= 15 && hand.highCardPoints <= 17 && hand.hasNtDistribution()) {
       return new Bid('normal', 1, 'N');
-    } else if (hand.totalPoints <= 10 && preemptSuit.length > 0 && (preemptSuit[0].suit !== 'C' || preemptSuit.length > 6)) {
-      return new Bid('normal', preemptSuit.length === 6 ? 2 : 3, preemptSuit[0].suit);
+      // } else if (hand.totalPoints <= 10 && preemptSuit.length > 0 && (preemptSuit[0].suit !== 'C' || preemptSuit.length > 6)) {
+      //   return new Bid('normal', preemptSuit.length === 6 ? 2 : 3, preemptSuit[0].suit);
     } else if (hand.totalPoints >= 13 && bestMajor.length >= 5) {
-      return new Bid('normal', 1, bestMajor[0].suit);
+      return new Bid('normal', 1, bestMajor.suit);
     } else if (hand.totalPoints >= 13) {
-      return new Bid('normal', 1, bestMinor[0].suit);
+      return new Bid('normal', 1, bestMinor.suit);
     } else {
       return new Bid('pass');
     }
@@ -112,7 +113,7 @@ export class DuffieBidder implements BridgeBidder {
     return new Bid('pass');
   }
 
-  private respondTo2COpen(context: BidContext, hand: Hand, interveningBid: BidWithSeat, bestSuit: Card[]): Bid {
+  private respondTo2COpen(context: BidContext, hand: Hand, interveningBid: BidWithSeat, bestSuit: CardSet): Bid {
     if (hand.totalPoints < 8 && interveningBid.type !== 'pass') {
       return new Bid('pass');
     }
@@ -120,33 +121,33 @@ export class DuffieBidder implements BridgeBidder {
       return new Bid('normal', 2, 'D');
     }
     if (interveningBid.type === 'normal') {
-      if (interveningBid.strain == bestSuit[0].suit && hand.totalPoints >= 5 || hand.totalPoints >= 8) {
+      if (interveningBid.strain == bestSuit.suit && hand.totalPoints >= 5 || hand.totalPoints >= 8) {
         return new Bid('double');
       }
       if (interveningBid.count === 2) {
-        return new Bid('normal', interveningBid.strain === 'N' || ['C', 'D'].indexOf(bestSuit[0].suit) >= 0 || SUITS.indexOf(interveningBid.strain) < SUITS.indexOf(bestSuit[0].suit) ? 3 : 2, bestSuit[0].suit);
+        return new Bid('normal', interveningBid.strain === 'N' || ['C', 'D'].indexOf(bestSuit.suit) >= 0 || SUITS.indexOf(interveningBid.strain) < SUITS.indexOf(bestSuit.suit) ? 3 : 2, bestSuit.suit);
       }
       return new Bid('pass');
     } else if (interveningBid.type === 'double' && hand.totalPoints >= 10) {
       return new Bid('redouble');
     }
-    return new Bid('normal', ['C', 'D'].indexOf(bestSuit[0].suit) >= 0 ? 3 : 2, bestSuit[0].suit);
+    return new Bid('normal', ['C', 'D'].indexOf(bestSuit.suit) >= 0 ? 3 : 2, bestSuit.suit);
   }
 
-  private respondTo3NT(context: BidContext, hand: Hand, interveningBid: BidWithSeat, bestMajor: Card[], bestSuit: Card[]): Bid {
+  private respondTo3NT(context: BidContext, hand: Hand, interveningBid: BidWithSeat, bestMajor: CardSet, bestSuit: CardSet): Bid {
     const cardsInInterveningSuit = interveningBid.type === 'normal' && interveningBid.strain !== 'N' ? hand.getAllCardsInSuit(interveningBid.strain) : null;
     switch (interveningBid.type) {
       case 'pass': {
         if (hand.totalPoints >= 15) {
           if (bestSuit.length >= 6) {
-            return new Bid('normal', 6, bestSuit[0].suit);
+            return new Bid('normal', 6, bestSuit.suit);
           }
           if (hand.totalPoints >= 17) {
             return new Bid('normal', 6, 'N');
           }
           return new Bid('normal', 4, 'N');
         } else if (bestMajor.length >= 6) {
-          return new Bid('normal', 4, bestMajor[0].suit);
+          return new Bid('normal', 4, bestMajor.suit);
         }
         return new Bid('pass');
       }
@@ -155,10 +156,10 @@ export class DuffieBidder implements BridgeBidder {
           return new Bid('redouble');
         }
         if (bestMajor.length >= 6) {
-          return new Bid('normal', 4, bestMajor[0].suit);
+          return new Bid('normal', 4, bestMajor.suit);
         }
         if (bestSuit.length >= 7) {
-          return new Bid('normal', 5, bestSuit[0].suit);
+          return new Bid('normal', 5, bestSuit.suit);
         }
         return new Bid('pass');
       }
@@ -166,11 +167,11 @@ export class DuffieBidder implements BridgeBidder {
         if ((cardsInInterveningSuit && cardsInInterveningSuit.length >= 5) || hand.totalPoints >= 8) {
           return new Bid('double');
         }
-        if (bestMajor.length >= 6 && interveningBid.count < 5 && STRAINS.indexOf(interveningBid.strain) < STRAINS.indexOf(bestMajor[0].suit)) {
-          return new Bid('normal', 4, bestMajor[0].suit);
+        if (bestMajor.length >= 6 && interveningBid.count < 5 && STRAINS.indexOf(interveningBid.strain) < STRAINS.indexOf(bestMajor.suit)) {
+          return new Bid('normal', 4, bestMajor.suit);
         }
         if (bestSuit.length >= 7 && interveningBid.count < 5) {
-          return new Bid('normal', 5, bestSuit[0].suit);
+          return new Bid('normal', 5, bestSuit.suit);
         }
         return new Bid('pass');
       }
@@ -179,29 +180,29 @@ export class DuffieBidder implements BridgeBidder {
     }
   }
 
-  private respondTo2NT(context: BidContext, hand: Hand, interveningBid: BidWithSeat, bestMajor: Card[], bestSuit: Card[]): Bid {
+  private respondTo2NT(context: BidContext, hand: Hand, interveningBid: BidWithSeat, bestMajor: CardSet, bestSuit: CardSet): Bid {
     // First decide on response ignoring intervening bid...
     let bid: Bid | null = null;
     if (hand.totalPoints >= 17) {
       if (bestSuit.length >= 6) {
-        bid = new Bid('normal', 7, bestSuit[0].suit);
+        bid = new Bid('normal', 7, bestSuit.suit);
       }
       bid = new Bid('normal', 7, 'N');
     }
     if (hand.totalPoints >= 12) {
       if (bestSuit.length >= 6) {
-        bid = new Bid('normal', 6, bestSuit[0].suit);
+        bid = new Bid('normal', 6, bestSuit.suit);
       }
       bid = new Bid('normal', 6, 'N');
     }
     if (hand.totalPoints >= 10) {
       if (bestSuit.length >= 6) {
-        bid = new Bid('normal', 5, bestSuit[0].suit);
+        bid = new Bid('normal', 5, bestSuit.suit);
       }
       bid = new Bid('normal', 4, 'N');
     }
     if (bestMajor.length >= 5) {
-      bid = new Bid('normal', 3, SUITS[SUITS.indexOf(bestMajor[0].suit) - 1]);
+      bid = new Bid('normal', 3, SUITS[SUITS.indexOf(bestMajor.suit) - 1]);
     }
     if (hand.highCardPoints >= 4) {
       bid = new Bid('normal', 3, 'N');
@@ -232,15 +233,15 @@ export class DuffieBidder implements BridgeBidder {
     }
   }
 
-  private respondTo1NTWithoutInterference(context: BidContext, hand: Hand, bestMajor: Card[], bestSuit: Card[]): Bid {
+  private respondTo1NTWithoutInterference(context: BidContext, hand: Hand, bestMajor: CardSet, bestSuit: CardSet): Bid {
     if (hand.totalPoints < 8) {
       if (bestMajor.length >= 5) {
-        return new Bid('normal', 2, SUITS[SUITS.indexOf(bestMajor[0].suit) - 1]);
+        return new Bid('normal', 2, SUITS[SUITS.indexOf(bestMajor.suit) - 1]);
       }
       return new Bid('pass');
     }
     if (bestMajor.length >= 5) {
-      return new Bid('normal', 2, SUITS[SUITS.indexOf(bestMajor[0].suit) - 1]);
+      return new Bid('normal', 2, SUITS[SUITS.indexOf(bestMajor.suit) - 1]);
     }
     if (bestSuit.length >= 6) {
       return new Bid('normal', 2, 'S');
@@ -254,7 +255,7 @@ export class DuffieBidder implements BridgeBidder {
     return new Bid('normal', 3, 'N');
   }
 
-  private respondTo1NTWithInterference(context: BidContext, hand: Hand, bestMajor: Card[], bestSuit: Card[], interveningBid: BidWithSeat): Bid {
+  private respondTo1NTWithInterference(context: BidContext, hand: Hand, bestMajor: CardSet, bestSuit: CardSet, interveningBid: BidWithSeat): Bid {
     const bid = this.respondTo1NTWithoutInterference(context, hand, bestMajor, bestSuit);
     switch (interveningBid.type) {
       case 'normal': {

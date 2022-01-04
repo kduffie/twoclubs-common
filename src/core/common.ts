@@ -170,7 +170,10 @@ export interface PlayContext {
   playCurrentTrick: Trick;
 }
 
-export function randomlySelect<T>(candidates: T[]): T {
+export function randomlySelect<T>(candidates: T[] | Set<T>): T {
+  if (!Array.isArray(candidates)) {
+    candidates = Array.from(candidates);
+  }
   assert(candidates.length > 0);
   const result = shuffle.pick(candidates, { rng: rng });
   return Array.isArray(result) ? result[0] : result;
@@ -195,20 +198,6 @@ export class Range {
     this.min = min;
     this.max = max;
   }
-}
-
-export function getSuitsFromCardsExcept(cards: Card[], omitSuit: Suit | null): Suit[] {
-  const result = new Set<Suit>();
-  for (const card of cards) {
-    if (!omitSuit || omitSuit === card.suit) {
-      result.add(card.suit);
-    }
-  }
-  const suits = Array.from(result);
-  suits.sort((a, b) => {
-    return SUITS.indexOf(b) - SUITS.indexOf(a);
-  });
-  return suits;
 }
 
 export function sortCards(cards: Card[]): void {

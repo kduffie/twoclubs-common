@@ -1,3 +1,4 @@
+import { assert } from "console";
 import { Bid } from "./bid";
 import { Card } from "./card";
 import { BidContext, BoardContext, FinalBoardContext, PlayContext, randomlySelect, Seat } from "./common";
@@ -51,12 +52,18 @@ export class BridgePlayerBase implements BridgePlayer {
   }
 
   async playFromDummy(context: PlayContext, dummy: Hand, hand: Hand): Promise<Card> {
-    const cards = dummy.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
+    let cards = dummy.getEligibleToPlay(context.playCurrentTrick.getLeadSuit()).cards;
+    if (cards.length === 0) {
+      cards = dummy.unplayedCards.cards;
+    }
     return randomlySelect(cards);
   }
 
   async play(context: PlayContext, hand: Hand, dummy: Hand | null): Promise<Card> {
-    const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
+    let cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit()).cards;
+    if (cards.length === 0) {
+      cards = hand.unplayedCards.cards;
+    }
     return randomlySelect(cards);
   }
 

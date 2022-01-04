@@ -3,6 +3,7 @@ import { FinalBoardContext, getCardsInSuit, PlayContext, randomlySelect, Seat } 
 import { BridgeCardPlayer } from "../core/player";
 import { Card } from "../core/card";
 import * as assert from 'assert';
+import { CardSet } from "../core/card-set";
 
 export class DuffieCardPlayer implements BridgeCardPlayer {
   private _mseat: Seat = 'N';
@@ -46,103 +47,90 @@ export class DuffieCardPlayer implements BridgeCardPlayer {
   }
 
   private lead(context: PlayContext, hand: Hand): Card {
-    const cards = hand.getEligibleToPlay(null);
-    const suitCards = this.selectSuit(context, cards);
-    assert(suitCards.length > 0);
-    // lead low
-    return suitCards[suitCards.length - 1];
-  }
-
-  private selectSuit(context: PlayContext, cards: Card[]): Card[] {
-    const card = randomlySelect(cards)
-    return getCardsInSuit(cards, card.suit);
+    const suits = context.playContract.strain === 'N' ? hand.unplayedCards.suits : hand.unplayedCards.getSuitsExcept(context.playContract.strain);
+    const suit = randomlySelect(suits);
+    return hand.unplayedCards.getLowestCardInSuit(suit)!;
   }
 
   private playSecondSeat(context: PlayContext, hand: Hand): Card {
-    const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
-    if (cards.length > 0) {
-      return cards[cards.length - 1];
+    const suit = context.playCurrentTrick.getLeadSuit();
+    assert(suit);
+    const result = hand.unplayedCards.getLowestCardInSuit(suit);
+    if (result) {
+      return result;
     }
-    const allAvailable = hand.getEligibleToPlay(null);
-    allAvailable.sort((a, b) => {
-      if (a.isEqual(b)) {
-        return 0;
-      } else if (a.isBetter(b, context.playContract.strain)) {
-        return -1;
-      } else {
-        return 1;
-      }
-    });
-    return allAvailable[allAvailable.length - 1];
+    const lowest = context.playContract.strain === 'N' ? hand.unplayedCards.getLowestCardInAnySuit() : hand.unplayedCards.getLowestCardInAnySuitExcept(context.playContract.strain);
+    if (lowest) {
+      return lowest;
+    }
+    const lowestAll = hand.unplayedCards.getLowestCardInAnySuit();
+    assert(lowestAll);
+    return lowestAll;
   }
+
   private playThirdSeat(context: PlayContext, hand: Hand): Card {
-    // If cards in suit, play highest if it will win, or lowest in that suit
-    // But if no cards in that suit, play lowest trump that will win.
-    const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
     const currentBest = context.playCurrentTrick.getCurrentBest()?.card;
     assert(currentBest);
-    if (cards.length > 0) {
-      if (cards[0].isBetter(currentBest, context.playContract.strain)) {
-        return cards[0];
-      }
-      return cards[cards.length - 1];
-    }
-    const trumps = context.playContract.strain === 'N' ? [] : hand.getUnplayedCardsInSuit(context.playContract.strain);
-    if (trumps.length > 0) {
-      if (currentBest.suit === trumps[0].suit) {
-        for (let i = 0; i < trumps.length; i++) {
-          const candidate = trumps[trumps.length - 1 - i];
-          if (candidate.isBetter(currentBest, context.playContract.strain)) {
-            return candidate;
-          }
-        }
-      }
-    }
-    const allAvailable = hand.getEligibleToPlay(null);
-    allAvailable.sort((a, b) => {
-      if (a.isEqual(b)) {
-        return 0;
-      } else if (a.isBetter(b, context.playContract.strain)) {
-        return -1;
+    const leadSuit = context.playCurrentTrick.getLeadSuit();
+    assert(leadSuit);
+    const highest = hand.unplayedCards.getHighestCardInSuit(leadSuit);
+    if (highest) {
+      if (highest.isBetter(currentBest, context.playContract.strain)) {
+        return highest;
       } else {
-        return 1;
+        const lowest = hand.unplayedCards.getLowestCardInSuit(leadSuit);
+        assert(lowest);
+        return lowest;
       }
-    });
-    return allAvailable[allAvailable.length - 1];
+    }
+    if (currentBest.suit === context.playContract.strain) {
+      const coverTrump = hand.unplayedCards.getMinimumCardtToCover(currentBest);
+      if (coverTrump) {
+        return coverTrump;
+      }
+    } else if (context.playContract.strain !== 'N') {
+      const lowTrump = hand.unplayedCards.getLowestCardInSuit(context.playContract.strain)
+      if (lowTrump) {
+        return lowTrump;
+      }
+    }
+    const lowest = context.playContract.strain === 'N' ? hand.unplayedCards.getLowestCardInAnySuit() : hand.unplayedCards.getLowestCardInAnySuitExcept(context.playContract.strain);
+    if (lowest) {
+      return lowest;
+    }
+    const lowestAll = hand.unplayedCards.getLowestCardInAnySuit();
+    assert(lowestAll);
+    return lowestAll;
   }
+
   private playFourthSeat(context: PlayContext, hand: Hand): Card {
-    const cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit());
     const currentBest = context.playCurrentTrick.getCurrentBest()?.card;
     assert(currentBest);
-    if (cards.length > 0) {
-      for (let i = 0; i < cards.length; i++) {
-        if (cards[cards.length - 1 - i].isBetter(currentBest, context.playContract.strain)) {
-          return cards[cards.length - 1 - i];
+    const leadSuit = context.playCurrentTrick.getLeadSuit();
+    assert(leadSuit);
+    if (currentBest.suit === leadSuit) {
+      const cover = hand.unplayedCards.getMinimumCardtToCover(currentBest);
+      if (cover) {
+        return cover;
+      }
+      if (context.playContract.strain !== 'N') {
+        const trump = hand.unplayedCards.getLowestCardInSuit(context.playContract.strain);
+        if (trump) {
+          return trump;
         }
       }
-      return cards[cards.length - 1];
-    }
-    const trumps = context.playContract.strain === 'N' ? [] : hand.getUnplayedCardsInSuit(context.playContract.strain);
-    if (trumps.length > 0) {
-      if (currentBest.suit === trumps[0].suit) {
-        for (let i = 0; i < trumps.length; i++) {
-          const candidate = trumps[trumps.length - 1 - i];
-          if (candidate.isBetter(currentBest, context.playContract.strain)) {
-            return candidate;
-          }
-        }
+    } else if (context.playContract.strain !== 'N' && hand.unplayedCards.isVoid(leadSuit)) {
+      const trump = hand.unplayedCards.getLowestCardInSuit(context.playContract.strain);
+      if (trump) {
+        return trump;
       }
     }
-    const allAvailable = hand.getEligibleToPlay(null);
-    allAvailable.sort((a, b) => {
-      if (a.isEqual(b)) {
-        return 0;
-      } else if (a.isBetter(b, context.playContract.strain)) {
-        return -1;
-      } else {
-        return 1;
-      }
-    });
-    return allAvailable[allAvailable.length - 1];
+    const lowest = context.playContract.strain === 'N' ? hand.unplayedCards.getLowestCardInAnySuit() : hand.unplayedCards.getLowestCardInAnySuitExcept(context.playContract.strain);
+    if (lowest) {
+      return lowest;
+    }
+    const lowestAll = hand.unplayedCards.getLowestCardInAnySuit();
+    assert(lowestAll);
+    return lowestAll;
   }
 }

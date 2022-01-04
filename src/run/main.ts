@@ -4,7 +4,7 @@ import { randomGenerator } from "../core/rng";
 import { BridgePlayerBase } from "../core/player";
 
 async function run() {
-  // randomGenerator.seed = '6';
+  randomGenerator.seed = '6';
   const table = new BridgeTable({ assignContract: true });
   const r1 = new BridgePlayerBase();
   const r2 = new BridgePlayerBase();
