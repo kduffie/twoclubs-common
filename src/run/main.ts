@@ -5,11 +5,11 @@ import { BridgePlayerBase } from "../core/player";
 
 async function run() {
   // randomGenerator.seed = '6';
-  const table = new BridgeTable({ assignContract: false });
-  const r1 = new DuffieRobot();
-  const r2 = new DuffieRobot();
-  const r3 = new BridgePlayerBase();
-  const r4 = new BridgePlayerBase();
+  const table = new BridgeTable({ assignContract: true });
+  const r1 = new BridgePlayerBase();
+  const r2 = new BridgePlayerBase();
+  const r3 = new DuffieRobot();
+  const r4 = new DuffieRobot();
   table.assignTeam('NS', [r1, r2]);
   table.assignTeam('EW', [r3, r4]);
   for (let i = 1; ; i++) {

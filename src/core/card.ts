@@ -81,7 +81,10 @@ export class Card {
     return this.name;
   }
 
-  isBetter(other: Card, trump: Strain): boolean {
+  isBetter(other: Card | null, trump: Strain): boolean {
+    if (!other) {
+      return true;
+    }
     if (other.suit === this.suit) {
       return CARD_RANKS.indexOf(this.rank) > CARD_RANKS.indexOf(other.rank);
     } else if (trump === 'N') {

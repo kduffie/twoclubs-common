@@ -37,6 +37,7 @@ export class PartnershipStats {
   private _declarerBoards = new SituationalStats('declarer', 'When declarer');
   private _declarerWhenSameAsRecommended = new SituationalStats('declarer-when-recommended', 'Declarer when recommended contract');
   private _declarerWhenRecommendedHigher = new SituationalStats('declarer-when-recommended-higher', 'Declarer when recommended contract was higher');
+  private _declarerWithMissedGame = new SituationalStats('declarer-when-game-missed', 'Declarer when potential game missed');
   private _declarerWhenRecommendedLower = new SituationalStats('declarer-when-recommended-lower', 'Declarer when recommended contract was lower');
   private _declarerWhenNotRecommended = new SituationalStats('declarer-when-recommended-lower', 'Declarer when passing was recommended');
   private _defenderBoards = new SituationalStats('defender', 'When defending');
@@ -86,6 +87,7 @@ export class PartnershipStats {
     result.push(this._passedWhenRecommended);
     result.push(this._declarerWhenSameAsRecommended);
     result.push(this._declarerWhenRecommendedHigher);
+    result.push(this._declarerWithMissedGame);
     result.push(this._declarerWhenRecommendedLower);
     result.push(this._declarerWhenNotRecommended);
 
@@ -116,10 +118,15 @@ export class PartnershipStats {
     if (recommendedContract) {
       if (recommendedContract.count === board.contract.count && recommendedContract.strain === board.contract.strain) {
         this._declarerWhenSameAsRecommended.processBoard(board, true);
-      } else if (recommendedContract.isHigher(board.contract)) {
-        this._declarerWhenRecommendedHigher.processBoard(board, true);
       } else {
-        this._declarerWhenRecommendedLower.processBoard(board, true);
+        if (recommendedContract.isGameBonusApplicable() && !board.contract.isGameBonusApplicable()) {
+          this._declarerWithMissedGame.processBoard(board, true);
+        }
+        if (recommendedContract.isHigher(board.contract)) {
+          this._declarerWhenRecommendedHigher.processBoard(board, true);
+        } else {
+          this._declarerWhenRecommendedLower.processBoard(board, true);
+        }
       }
     } else {
       this._declarerWhenNotRecommended.processBoard(board, true);
