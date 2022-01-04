@@ -6,7 +6,7 @@ import * as shuffle from 'shuffle-array';
 import { assert } from "console";
 import { Auction } from "./auction";
 import { Hand } from "./hand";
-import { rng } from "./rng";
+import { RandomGenerator } from "./random-generator";
 
 
 export type Seat = 'N' | 'E' | 'S' | 'W';
@@ -21,6 +21,7 @@ export type CardRank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'T' | 'J'
 export const CARD_RANKS: CardRank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 export type Suit = 'C' | 'D' | 'H' | 'S';
 export const SUITS: Suit[] = ['C', 'D', 'H', 'S'];
+export const SUITS_REVERSE: Suit[] = ['S', 'H', 'D', 'C'];
 export type Strain = Suit | 'N';
 export const STRAINS: Strain[] = ['C', 'D', 'H', 'S', 'N'];
 
@@ -140,6 +141,7 @@ export interface BoardContext {
   dealer: Seat;
   hands: Map<Seat, Hand>;
   status: BoardStatus;
+  randomGenerator: RandomGenerator;
   toString(): string;
 }
 
@@ -168,14 +170,15 @@ export interface PlayContext {
   declarerTricks: number;
   completedTricks: Trick[];
   playCurrentTrick: Trick;
+  randomGenerator: RandomGenerator;
 }
 
-export function randomlySelect<T>(candidates: T[] | Set<T>): T {
+export function randomlySelect<T>(candidates: T[] | Set<T>, randomGenerator: RandomGenerator): T {
   if (!Array.isArray(candidates)) {
     candidates = Array.from(candidates);
   }
   assert(candidates.length > 0);
-  const result = shuffle.pick(candidates, { rng: rng });
+  const result = shuffle.pick(candidates, { rng: () => randomGenerator.random });
   return Array.isArray(result) ? result[0] : result;
 }
 

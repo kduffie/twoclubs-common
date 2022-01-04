@@ -1,12 +1,16 @@
 import { Card } from "./card";
-import { CardRank, CARD_RANKS, getCardsInSuit, sortCards, Suit, SUITS } from "./common";
+import { CardRank, CARD_RANKS, getCardsInSuit, sortCards, Suit, SUITS, SUITS_REVERSE } from "./common";
 const pad = require('utils-pad-string');
 import * as assert from 'assert';
+import { CardSuit } from "./card-suit";
 
 export class CardSet {
-  private _suits = new Map<Suit, Card[]>();
+  private _suits = new Map<Suit, CardSuit>();
 
   constructor(cards?: Card[]) {
+    for (const suit of SUITS) {
+      this._suits.set(suit, new CardSuit(suit));
+    }
     if (cards) {
       for (const card of cards) {
         this.add(card);
@@ -19,140 +23,86 @@ export class CardSet {
   }
 
   add(card: Card): void {
-    let cs = this._suits.get(card.suit);
-    if (!cs) {
-      cs = [];
-      this._suits.set(card.suit, cs);
-    }
-    cs.push(card);
-    sortCards(cs);
+    this._suits.get(card.suit)!.add(card);
   }
 
-
-  remove(card: Card): Card | null {
-    const cs = this._suits.get(card.suit);
-    if (cs) {
-      for (let i = 0; i < cs.length; i++) {
-        if (cs[i].rank === card.rank) {
-          const result = cs[i];
-          cs.splice(i, 1);
-          if (cs.length === 0) {
-            this._suits.delete(card.suit);
-          }
-          return result;
-        }
-      }
-    }
-    return null;
+  remove(card: Card): boolean {
+    return this._suits.get(card.suit)!.remove(card);
   }
 
   clear(): void {
-    this._suits.clear();
+    for (const suit of SUITS) {
+      this._suits.get(suit)!.clear();
+    }
   }
 
   get cards(): Card[] {
     const result: Card[] = [];
-    for (const cs of this._suits.values()) {
-      result.push(...cs);
+    for (const suit of SUITS_REVERSE) {
+      result.push(... this._suits.get(suit)!.cards);
     }
-    sortCards(result);
     return result;
   }
 
-  get suit(): Suit {
-    assert(this._suits.size === 1);
-    return Array.from(this._suits.keys())[0];
+  getSuit(suit: Suit): CardSuit {
+    return this._suits.get(suit)!;
   }
 
   get highCardPoints(): number {
     let result = 0;
-    for (const suit of this._suits.keys()) {
-      result += this.getHighCardPointsInSuit(suit);
+    for (const s of this._suits.values()) {
+      result += s.highCardPoints
+    }
+    return result;
+  }
+
+  get distributionPoints(): number {
+    let result = 0;
+    for (const s of this._suits.values()) {
+      result += s.distributionPoints;
     }
     return result;
   }
 
   get totalPoints(): number {
     let result = 0;
-    for (const suit of SUITS) {
-      result += this.getHighCardPointsInSuit(suit);
+    for (const s of this._suits.values()) {
+      result += s.totalPoints;
     }
     return result;
   }
 
-  find(card: Card): Card | null {
-    const cs = this._suits.get(card.suit);
-    if (cs) {
-      for (const c of cs) {
-        if (c.rank === card.rank) {
-          return c;
-        }
-      }
-    }
-    return null;
+  hasCard(card: Card): boolean {
+    const s = this._suits.get(card.suit)!;
+    return s.hasCard(card);
   }
 
   get length(): number {
     let result = 0;
-    for (const cs of this._suits.values()) {
-      result += cs.length;
+    for (const s of this._suits.values()) {
+      result += s.length;
     }
     return result;
   }
 
-  getHighCardPointsInSuit(suit: Suit): number {
-    let result = 0;
-    const cs = this._suits.get(suit);
-    if (cs) {
-      for (const card of cs) {
-        switch (card.rank) {
-          case 'A':
-            result += 4;
-            break;
-          case 'K':
-            result += 3;
-            break;
-          case 'Q':
-            result += 2;
-            break;
-          case 'J':
-            result += 1;
+  getAvailableSuits(except?: Suit): Set<Suit> {
+    const result = new Set<Suit>();
+    for (const s of this._suits.values()) {
+      if (!except || s.suit !== except) {
+        if (s.length > 0) {
+          result.add(s.suit);
         }
       }
     }
-    return result;
-  }
-  getTotalPointsInSuit(suit: Suit): number {
-    const cs = this._suits.get(suit) || [];
-    switch (cs.length) {
-      case 0:
-        return 3;
-      case 1:
-        return 2;
-      case 2:
-        return 1;
-      default:
-        return 0;
-    }
-  }
-
-  get suits(): Set<Suit> {
-    return new Set(this._suits.keys());
-  }
-
-  getSuitsExcept(suit: Suit): Set<Suit> {
-    const result = this.suits;
-    this.suits.delete(suit);
     return result;
   }
 
   hasNtDistribution(): boolean {
     let doubletonFound = false;
-    for (const suit of SUITS) {
-      const cs = this._suits.get(suit) || [];
-      if (cs.length < 2) {
+    for (const s of this._suits.values()) {
+      if (s.length < 2) {
         return false;
-      } else if (cs.length === 2) {
+      } else if (s.length === 2) {
         if (doubletonFound) {
           return false;
         } else {
@@ -163,97 +113,24 @@ export class CardSet {
     return true;
   }
 
-  getLength(suit: Suit): number {
-    return (this._suits.get(suit) || []).length;
-  }
-
-  getCardsInSuit(suit: Suit): CardSet {
-    const result = [... this._suits.get(suit) || []];
-    return new CardSet(result);
-  }
-
-  getLowestCardInSuit(suit: Suit): Card | null {
-    const cs = this._suits.get(suit);
-    if (cs && cs.length > 0) {
-      return cs[cs.length - 1];
-    } else {
-      return null;
-    }
-  }
-
-  getLowestCardInAnySuit(): Card {
+  getLowestCard(suit?: Suit): Card | null {
     let lowest: Card | null = null;
-    for (const cs of this._suits.values()) {
-      if (!lowest || CARD_RANKS.indexOf(cs[cs.length - 1].rank) < CARD_RANKS.indexOf(lowest.rank)) {
-        lowest = cs[cs.length - 1];
-      }
-    }
-    assert(lowest);
-    return lowest;
-  }
-
-  getLowestCardInAnySuitExcept(suit: Suit): Card | null {
-    let lowest: Card | null = null;
-    for (const suit of this._suits.keys()) {
-      if (suit !== suit) {
-        const cs = this._suits.get(suit)!;
-        if (!lowest || CARD_RANKS.indexOf(cs[cs.length - 1].rank) < CARD_RANKS.indexOf(lowest.rank)) {
-          lowest = cs[cs.length - 1];
+    for (const s of this._suits.values()) {
+      if (s.suit !== suit) {
+        const slowest = s.lowestCard;
+        if (slowest && (!lowest || slowest.rank < lowest.rank)) {
+          lowest = slowest;
         }
       }
     }
     return lowest;
-  }
-
-  getHighestCardInSuit(suit: Suit): Card | null {
-    const cs = this._suits.get(suit);
-    if (cs && cs.length > 0) {
-      return cs[0];
-    }
-    return null;
-  }
-
-  getHighestCardToCover(card: Card): Card | null {
-    const cs = this._suits.get(card.suit);
-    if (cs && cs.length > 0) {
-      if (CARD_RANKS.indexOf(cs[0].rank) > CARD_RANKS.indexOf(card.rank)) {
-        return cs[0];
-      }
-    }
-    return null;
-  }
-
-  getMinimumCardtToCover(card: Card): Card | null {
-    const cs = this._suits.get(card.suit);
-    if (cs) {
-      for (let i = 0; i < cs.length; i++) {
-        if (CARD_RANKS.indexOf(cs[cs.length - 1 - i].rank) > CARD_RANKS.indexOf(card.rank)) {
-          return cs[cs.length - 1 - i];
-        }
-      }
-    }
-    return null;
-  }
-
-  isVoid(suit: Suit): boolean {
-    return this.getLength(suit) === 0;
-  }
-
-  isBetter(other: CardSet): number {
-    if (this.length > other.length) {
-      return 1;
-    } else if (this.length < other.length) {
-      return -1
-    } else {
-      return this.highCardPoints - other.highCardPoints;
-    }
   }
 
   getStoppedSuits(): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of this._suits.keys()) {
-      if (this.isStopped(suit)) {
-        result.add(suit);
+    for (const s of this._suits.values()) {
+      if (s.isStopped()) {
+        result.add(s.suit);
       }
     }
     return result;
@@ -261,65 +138,20 @@ export class CardSet {
 
   getWellStoppedSuits(): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of this._suits.keys()) {
-      if (this.isWellStopped(suit)) {
-        result.add(suit);
+    for (const s of this._suits.values()) {
+      if (s.isWellStopped()) {
+        result.add(s.suit);
       }
     }
     return result;
   }
 
-  isStopped(suit: Suit): boolean {
-    const l = this.length;
-    return l >= 5 || this.includes(suit, 'A') ||
-      (this.includes(suit, 'K') && l >= 2) ||
-      (this.includes(suit, 'Q') && l >= 3) ||
-      (this.includes(suit, 'J') && l >= 4);
-  }
-
-  isWellStopped(suit: Suit): boolean {
-    const l = this.length;
-    return l >= 6 || this.includes(suit, 'A', 'K') ||
-      (this.includes(suit, 'A', 'Q') && l >= 3) ||
-      (this.includes(suit, 'A', 'J') && l >= 4) ||
-      (this.includes(suit, 'K', 'Q') && l >= 4) ||
-      (this.includes(suit, 'K', 'J') && l >= 4) ||
-      (this.includes(suit, 'Q', 'J') && l >= 4) ||
-      (this.includes(suit, 'A') && l >= 5) ||
-      (this.includes(suit, 'K') && l >= 5) ||
-      (this.includes(suit, 'Q') && l >= 5) ||
-      (this.includes(suit, 'J') && l >= 5);
-  }
-
-  hasFirstRoundStopper(suit: Suit, includeVoid: boolean): boolean {
-    return this.includes(suit, 'A');
-  }
-
-  hasFirstOrSecondRoundStopper(suit: Suit, includeVoid: boolean): boolean {
-    return this.includes(suit, 'A') || (this.length > 1 && this.includes(suit, 'K'));
-  }
-
-  includes(suit: Suit, ...ranks: CardRank[]): boolean {
-    if (ranks.length === 0) {
-      return true;
-    }
-    const cs = this._suits.get(suit);
-    if (!cs) {
-      return false;
-    }
-    for (const card of cs) {
-      if (ranks.indexOf(card.rank) < 0) {
-        return false;
-      }
-    }
-    return true;
-  }
 
   getFirstRoundStoppedSuits(includeVoid: boolean): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of SUITS) {
-      if (this.hasFirstRoundStopper(suit, includeVoid)) {
-        result.add(suit);
+    for (const s of this._suits.values()) {
+      if (s.hasFirstRoundStopper(includeVoid)) {
+        result.add(s.suit);
       }
     }
     return result;
@@ -327,15 +159,15 @@ export class CardSet {
 
   getFirstOrSecondRoundStoppedSuits(includeVoid: boolean): Set<Suit> {
     const result = new Set<Suit>();
-    for (const suit of SUITS) {
-      if (this.hasFirstOrSecondRoundStopper(suit, includeVoid)) {
-        result.add(suit);
+    for (const s of this._suits.values()) {
+      if (s.hasFirstOrSecondRoundStopper(includeVoid)) {
+        result.add(s.suit);
       }
     }
     return result;
   }
 
-  getBestSuit(): CardSet {
+  getBestSuit(): CardSuit {
     const major = this.getBestMajorSuit();
     const minor = this.getBestMinorSuit();
     if (major.isBetter(minor)) {
@@ -345,9 +177,9 @@ export class CardSet {
     }
   }
 
-  getBestMajorSuit(): CardSet {
-    const spades = this.getCardsInSuit('S');
-    const hearts = this.getCardsInSuit('H');
+  getBestMajorSuit(): CardSuit {
+    const spades = this.getSuit('S');
+    const hearts = this.getSuit('H');
     if (hearts.isBetter(spades)) {
       return hearts;
     } else {
@@ -355,9 +187,9 @@ export class CardSet {
     }
   }
 
-  getBestMinorSuit(): CardSet {
-    const clubs = this.getCardsInSuit('C');
-    const diamonds = this.getCardsInSuit('D');
+  getBestMinorSuit(): CardSuit {
+    const clubs = this.getSuit('C');
+    const diamonds = this.getSuit('D');
     if (diamonds.isBetter(clubs)) {
       return diamonds;
     } else {
@@ -365,22 +197,12 @@ export class CardSet {
     }
   }
 
-  toString(includePoints?: boolean, allSuits?: boolean): string {
+  toString(includePoints?: boolean): string {
     const result: string[] = [];
-    for (let i = 0; i < SUITS.length; i++) {
-      const suit = SUITS[SUITS.length - 1 - i];
-      const cards = this._suits.get(suit) || [];
-      if (allSuits || cards.length > 0) {
-        let row = suit + ': ';
-        if (cards.length === 0) {
-          row += '-';
-        } else {
-          cards.forEach((card) => { row += card.rank });
-          row += ' ';
-        }
-        const padded = pad(row, 11);
-        result.push(padded);
-      }
+    for (const suit of SUITS_REVERSE) {
+      const s = this._suits.get(suit)!;
+      const padded = pad(s.toString(), 11);
+      result.push(padded);
     }
     const cards = result.join(' ');
     return cards + (includePoints ? (` ${this.highCardPoints < 10 ? ' ' : ''}(${this.highCardPoints} ${this.totalPoints < 10 ? ' ' : ''}${this.totalPoints})  `) : '');

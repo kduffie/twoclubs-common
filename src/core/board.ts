@@ -9,7 +9,7 @@ import { Bid, BidWithSeat } from "./bid";
 import { Trick } from "./trick";
 import { Play } from "./play";
 import { Auction } from "./auction";
-import { rng } from "./rng";
+import { RandomGenerator } from "./random-generator";
 
 export class Board implements FinalBoardContext, BidContext, PlayContext {
   private _id: string;
@@ -24,22 +24,24 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
   private _declarerTricks = 0;
   private _defenseTricks = 0;
   private _status: BoardStatus = 'created';
+  private _randomGenerator: RandomGenerator;
 
-  private constructor(id: string, vulnerability: Vulnerability, dealer: Seat, hands: Map<Seat, Hand>) {
+  private constructor(id: string, vulnerability: Vulnerability, dealer: Seat, hands: Map<Seat, Hand>, randomGenerator: RandomGenerator) {
     this._id = id;
     this._vulnerability = vulnerability;
     this._dealer = dealer;
     this._nextExpectedBidder = dealer;
     assert(hands.size === 4);
     this._handsBySeat = hands;
+    this._randomGenerator = randomGenerator;
   }
 
-  static deal(id: string, vulnerability: Vulnerability, dealer: Seat): Board {
+  static deal(id: string, vulnerability: Vulnerability, dealer: Seat, randomGenerator: RandomGenerator): Board {
     const cardIndexes: number[] = [];
     for (let i = 0; i < CARD_RANKS.length * SUITS.length; i++) {
       cardIndexes.push(i);
     }
-    shuffle(cardIndexes, { rng: rng });
+    shuffle(cardIndexes, { rng: () => randomGenerator.random });
     const hands = new Map<Seat, Hand>();
     for (const seat of SEATS) {
       hands.set(seat, new Hand());
@@ -49,15 +51,19 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
       hands.get(seat)!.dealCard(new Card(CARD_RANKS[index % CARD_RANKS.length], SUITS[Math.floor(index / CARD_RANKS.length)]))
       seat = getSeatFollowing(seat);
     }
-    return new Board(id, vulnerability, dealer, hands);
+    return new Board(id, vulnerability, dealer, hands, randomGenerator);
   }
 
   static copyFrom(other: BoardContext): Board {
-    return new Board(other.boardId, other.vulnerability, other.dealer, other.hands);
+    return new Board(other.boardId, other.vulnerability, other.dealer, other.hands, other.randomGenerator);
   }
 
   get boardId(): string {
     return this._id;
+  }
+
+  get randomGenerator(): RandomGenerator {
+    return this._randomGenerator;
   }
 
   get hands(): Map<Seat, Hand> {
@@ -409,7 +415,7 @@ export class Board implements FinalBoardContext, BidContext, PlayContext {
     result.push(`         West:  ${this._handsBySeat.get('W')!.toString()}`);
     if (this._contract) {
       result.push(`  Contract: ${this._contract.toString()}`);
-      if (this.auction) {
+      if (this.auction && this.auction.bids.length > 0) {
         result.push(`  Auction:\n${this.auction.toString()}`);
       }
     } else if (this._passedOut) {

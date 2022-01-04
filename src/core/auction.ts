@@ -109,7 +109,7 @@ export class Auction {
 
   toString(): string {
     if (this._bids.length === 0) {
-      return 'No bids as yet';
+      return 'No bids';
     }
     const rows: string[] = [];
     rows.push(`       N     E     S     W`);

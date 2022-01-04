@@ -3,21 +3,22 @@ import { Board } from './board';
 import { getSeatsByPartnership, Partnership, PARTNERSHIPS, randomlySelect, Strain, Suit, union } from './common';
 import { Contract } from './contract';
 import { Hand } from './hand';
+import { RandomGenerator } from './random-generator';
 
-export type ContractAssigner = (board: Board) => Promise<Contract | null>;
+export type ContractAssigner = (board: Board, randomGenerator: RandomGenerator) => Promise<Contract | null>;
 
-export async function defaultContractAssigner(board: Board): Promise<Contract | null> {
+export async function defaultContractAssigner(board: Board, randomGenerator: RandomGenerator): Promise<Contract | null> {
   const nHand = board.getHand('N');
   const sHand = board.getHand('S');
   const eHand = board.getHand('E');
   const wHand = board.getHand('W');
   assert(nHand && sHand && eHand && wHand);
-  if (nHand.totalPoints <= 12 && sHand.totalPoints <= 12 && eHand.totalPoints <= 12 && wHand.totalPoints <= 12) {
+  if (nHand.allCards.totalPoints <= 12 && sHand.allCards.totalPoints <= 12 && eHand.allCards.totalPoints <= 12 && wHand.allCards.totalPoints <= 12) {
     return null;
   }
-  const nsTotal = nHand.totalPoints + sHand.totalPoints;
-  const ewTotal = eHand.totalPoints + wHand.totalPoints;
-  let partnership: Partnership = nsTotal === ewTotal ? randomlySelect(PARTNERSHIPS) : (nsTotal > ewTotal ? 'NS' : 'EW');
+  const nsTotal = nHand.allCards.totalPoints + sHand.allCards.totalPoints;
+  const ewTotal = eHand.allCards.totalPoints + wHand.allCards.totalPoints;
+  let partnership: Partnership = nsTotal === ewTotal ? randomlySelect(PARTNERSHIPS, randomGenerator) : (nsTotal > ewTotal ? 'NS' : 'EW');
   switch (partnership) {
     case 'NS':
       return chooseContract('NS', board.isPartnershipVulnerable('NS'), nHand, sHand, board);
@@ -27,12 +28,12 @@ export async function defaultContractAssigner(board: Board): Promise<Contract | 
 }
 
 function chooseContract(partnership: Partnership, vulnerable: boolean, hand1: Hand, hand2: Hand, board: Board): Contract {
-  const totalPoints = hand1.totalPoints + hand2.totalPoints;
-  const totalHCP = hand1.highCardPoints + hand2.highCardPoints;
-  const spades = hand1.getAllCardsInSuit('S').length + hand2.getAllCardsInSuit('S').length;
-  const hearts = hand1.getAllCardsInSuit('H').length + hand2.getAllCardsInSuit('H').length;
-  const diamonds = hand1.getAllCardsInSuit('D').length + hand2.getAllCardsInSuit('D').length;
-  const clubs = hand1.getAllCardsInSuit('C').length + hand2.getAllCardsInSuit('C').length;
+  const totalPoints = hand1.allCards.totalPoints + hand2.allCards.totalPoints;
+  const totalHCP = hand1.allCards.highCardPoints + hand2.allCards.highCardPoints;
+  const spades = hand1.allCards.getSuit('S').length + hand2.allCards.getSuit('S').length;
+  const hearts = hand1.allCards.getSuit('H').length + hand2.allCards.getSuit('H').length;
+  const diamonds = hand1.allCards.getSuit('D').length + hand2.allCards.getSuit('D').length;
+  const clubs = hand1.allCards.getSuit('C').length + hand2.allCards.getSuit('C').length;
   const longestMajorSuitFit = Math.max(spades, hearts);
   const longestMinorSuitFit = Math.max(diamonds, clubs);
   const longestFit = Math.max(spades, hearts, diamonds, clubs);
@@ -47,7 +48,7 @@ function chooseContract(partnership: Partnership, vulnerable: boolean, hand1: Ha
   let strain: Strain = 'N';
   let count = 1;
   const partners = getSeatsByPartnership(partnership);
-  let declarer = hand1.totalPoints >= hand2.totalPoints ? partners[0] : partners[1];
+  let declarer = hand1.allCards.totalPoints >= hand2.allCards.totalPoints ? partners[0] : partners[1];
   if (slamStoppedSuitsInSuit.size === 4 && totalPoints >= 32 && totalHCP >= 30 && longestFit >= 8) {
     strain = bestFit;
     count = 6;

@@ -4,8 +4,7 @@ import { ConventionCard, SimpleConventionCard } from "../core/convention-card";
 import { BridgeBidder } from "../core/player";
 import { Bid, BidWithSeat } from "../core/bid";
 import * as assert from 'assert';
-import { Card } from "../core/card";
-import { open } from "fs";
+import { Contract } from "../core/contract";
 
 export class BbsBidder implements BridgeBidder {
   private _mseat: Seat = 'N';
@@ -55,30 +54,34 @@ export class BbsBidder implements BridgeBidder {
     return new Bid('pass');
   }
 
+  async finalizeContract(context: BidContext, contract: Contract | null): Promise<void> {
+    // noop
+  }
+
   private getOpeningBid(context: BidContext, hand: Hand): Bid {
-    const bestMajor = hand.getBestMajorSuit();
-    const bestMinor = hand.getBestMinorSuit();
-    const bestSuit = hand.getBestSuit();
-    if (hand.highCardPoints >= 23 && hand.hasNtDistribution() && hand.allCards.getWellStoppedSuits().size == 4) {
+    const bestMajor = hand.allCards.getBestMajorSuit();
+    const bestMinor = hand.allCards.getBestMinorSuit();
+    const bestSuit = hand.allCards.getBestSuit();
+    if (hand.allCards.highCardPoints >= 23 && hand.allCards.hasNtDistribution() && hand.allCards.getWellStoppedSuits().size == 4) {
       return new Bid('normal', 3, 'N');
-    } else if (hand.totalPoints >= 25 && bestMajor.length >= 7) {
+    } else if (hand.allCards.totalPoints >= 25 && bestMajor.length >= 7) {
       return new Bid('normal', 4, bestMajor.suit);
-    } else if (hand.totalPoints >= 27 && bestMinor.length >= 8) {
+    } else if (hand.allCards.totalPoints >= 27 && bestMinor.length >= 8) {
       return new Bid('normal', 5, bestMinor.suit);
-    } else if (hand.highCardPoints >= 19 && hand.hasNtDistribution()) {
+    } else if (hand.allCards.highCardPoints >= 19 && hand.allCards.hasNtDistribution()) {
       return new Bid('normal', 2, 'N');
-    } else if (hand.highCardPoints >= 14 && hand.hasNtDistribution()) {
+    } else if (hand.allCards.highCardPoints >= 14 && hand.allCards.hasNtDistribution()) {
       return new Bid('normal', 1, 'N');
-    } else if (hand.totalPoints >= 13 && bestSuit.length >= 5) {
+    } else if (hand.allCards.totalPoints >= 13 && bestSuit.length >= 5) {
       const preferredSuit = bestMajor.length >= 5 ? bestMajor : bestMinor;
-      if (hand.totalPoints >= 19) {
+      if (hand.allCards.totalPoints >= 19) {
         return new Bid('normal', 3, preferredSuit.suit);
-      } else if (hand.totalPoints >= 16) {
+      } else if (hand.allCards.totalPoints >= 16) {
         return new Bid('normal', 2, preferredSuit.suit);
       } else {
         return new Bid('normal', 1, preferredSuit.suit);
       }
-    } else if (hand.totalPoints >= 13) {
+    } else if (hand.allCards.totalPoints >= 13) {
       return new Bid('normal', 1, bestSuit.suit);
     }
     return new Bid('pass');
@@ -102,11 +105,11 @@ export class BbsBidder implements BridgeBidder {
 
   private getFirstResponseToNT(context: BidContext, hand: Hand, opening: BidWithSeat): Bid {
     const partnerMinHCP = opening.count === 2 ? 19 : 14;
-    const combined = partnerMinHCP + hand.highCardPoints;
+    const combined = partnerMinHCP + hand.allCards.highCardPoints;
     if (combined >= 24) {
       return new Bid('normal', 3, 'N');
     } else {
-      const bestSuit = hand.getBestSuit();
+      const bestSuit = hand.allCards.getBestSuit();
       if (bestSuit.length >= 6) {
         return new Bid('normal', 3, bestSuit.suit);
       }
@@ -116,13 +119,13 @@ export class BbsBidder implements BridgeBidder {
 
   private getFirstResponseToMajor(context: BidContext, hand: Hand, opening: BidWithSeat): Bid {
     assert(opening.strain !== 'N');
-    const mySuit = hand.getAllCardsInSuit(opening.strain);
+    const mySuit = hand.allCards.getSuit(opening.strain);
     const partnerMinTotal = opening.count === 3 ? 19 : (opening.count === 2 ? 16 : 13);
-    const combinedPoints = partnerMinTotal + hand.totalPoints;
-    const combinedHCP = partnerMinTotal + hand.highCardPoints;
+    const combinedPoints = partnerMinTotal + hand.allCards.totalPoints;
+    const combinedHCP = partnerMinTotal + hand.allCards.highCardPoints;
     if (mySuit.length >= 3 && combinedPoints >= 24) {
       return new Bid('normal', 4, opening.strain);
-    } else if (combinedHCP >= 24 && hand.hasNtDistribution) {
+    } else if (combinedHCP >= 24 && hand.allCards.hasNtDistribution) {
       return new Bid('normal', 3, 'N');
     }
     return new Bid('pass');
@@ -131,9 +134,9 @@ export class BbsBidder implements BridgeBidder {
   private getFirstResponseToMinor(context: BidContext, hand: Hand, opening: BidWithSeat): Bid {
     assert(opening.strain !== 'N');
     const partnerMinTotal = opening.count === 3 ? 19 : (opening.count === 2 ? 16 : 13);
-    const combined = partnerMinTotal + hand.totalPoints;
+    const combined = partnerMinTotal + hand.allCards.totalPoints;
     if (combined >= 24) {
-      const bestMajor = hand.getBestMajorSuit();
+      const bestMajor = hand.allCards.getBestMajorSuit();
       if (bestMajor.length >= 5) {
         return new Bid('normal', 3, bestMajor.suit);
       } else {
@@ -159,7 +162,7 @@ export class BbsBidder implements BridgeBidder {
   }
 
   private getSubsequentResponseInNT(context: BidContext, hand: Hand, partnersResponse: BidWithSeat, myOpening: BidWithSeat): Bid {
-    const mySuit = partnersResponse.strain !== 'N' ? hand.getAllCardsInSuit(partnersResponse.strain) : [];
+    const mySuit = partnersResponse.strain !== 'N' ? hand.allCards.getSuit(partnersResponse.strain) : [];
     switch (partnersResponse.strain) {
       case 'H':
       case 'S':
@@ -178,7 +181,7 @@ export class BbsBidder implements BridgeBidder {
   }
 
   private getSubsequentResponseInMinor(context: BidContext, hand: Hand, partnersResponse: BidWithSeat, myOpening: BidWithSeat): Bid {
-    const mySuit = partnersResponse.strain !== 'N' ? hand.getAllCardsInSuit(partnersResponse.strain) : [];
+    const mySuit = partnersResponse.strain !== 'N' ? hand.allCards.getSuit(partnersResponse.strain) : [];
     switch (partnersResponse.strain) {
       case 'H':
       case 'S':

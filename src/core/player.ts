@@ -2,6 +2,7 @@ import { assert } from "console";
 import { Bid } from "./bid";
 import { Card } from "./card";
 import { BidContext, BoardContext, FinalBoardContext, PlayContext, randomlySelect, Seat } from "./common";
+import { Contract } from "./contract";
 import { ConventionCard, SimpleConventionCard } from "./convention-card";
 import { Hand } from "./hand";
 
@@ -12,7 +13,7 @@ export interface BridgeBidder {
   acceptConventions(conventionCard: ConventionCard): boolean;
   startBoard: (context: BoardContext) => Promise<void>;
   bid: (context: BidContext, hand: Hand) => Promise<Bid>;
-
+  finalizeContract: (context: BidContext, contract: Contract | null) => Promise<void>;
 }
 
 export interface BridgeCardPlayer {
@@ -47,24 +48,22 @@ export class BridgePlayerBase implements BridgePlayer {
     return new Bid('pass');
   }
 
+  async finalizeContract(context: BidContext, contract: Contract | null): Promise<void> {
+    // available for derived implementation
+  }
+
   async startPlay(context: PlayContext): Promise<void> {
     // available for derived implementation
   }
 
   async playFromDummy(context: PlayContext, dummy: Hand, hand: Hand): Promise<Card> {
     let cards = dummy.getEligibleToPlay(context.playCurrentTrick.getLeadSuit()).cards;
-    if (cards.length === 0) {
-      cards = dummy.unplayedCards.cards;
-    }
-    return randomlySelect(cards);
+    return randomlySelect(cards, context.randomGenerator);
   }
 
   async play(context: PlayContext, hand: Hand, dummy: Hand | null): Promise<Card> {
     let cards = hand.getEligibleToPlay(context.playCurrentTrick.getLeadSuit()).cards;
-    if (cards.length === 0) {
-      cards = hand.unplayedCards.cards;
-    }
-    return randomlySelect(cards);
+    return randomlySelect(cards, context.randomGenerator);
   }
 
   async finishPlay(context: FinalBoardContext): Promise<void> {

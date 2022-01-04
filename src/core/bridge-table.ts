@@ -6,9 +6,12 @@ import { BridgePlayer, BridgePlayerBase } from "./player";
 import * as assert from 'assert';
 import { Play } from "./play";
 import { TableStats } from "./table-stats";
+import { RandomGenerator, RandomGeneratorImpl } from "./random-generator";
+
 
 export interface TableOptions {
   assignContract?: boolean;
+  randomSeed?: string;
 }
 
 export class BridgeTable {
@@ -18,8 +21,9 @@ export class BridgeTable {
   private _currentBoard: Board | null = null;
   private _contractAssigner: ContractAssigner;
   private _tableStats = new TableStats();
+  private _randomGenerator: RandomGenerator;
 
-  constructor(options?: TableOptions, contractAssigner?: ContractAssigner) {
+  constructor(options?: TableOptions, contractAssigner?: ContractAssigner, rng?: RandomGenerator) {
     this._options = options || {};
     for (const seat of SEATS) {
       const player = new BridgePlayerBase();
@@ -27,6 +31,10 @@ export class BridgeTable {
       this._players.set(seat, player);
     }
     this._contractAssigner = contractAssigner || defaultContractAssigner;
+    this._randomGenerator = rng || new RandomGeneratorImpl();
+    if (options?.randomSeed) {
+      this._randomGenerator.seed = options.randomSeed;
+    }
   }
 
   get players(): Map<Seat, BridgePlayer> {
@@ -79,7 +87,7 @@ export class BridgeTable {
     } else {
       const boardId = this._boardNumber.toString();
       this._boardNumber++;
-      this._currentBoard = Board.deal(boardId, randomlySelect(VULNERABILITIES), randomlySelect(SEATS));
+      this._currentBoard = Board.deal(boardId, randomlySelect(VULNERABILITIES, this._randomGenerator), randomlySelect(SEATS, this._randomGenerator), this._randomGenerator);
     }
     return this._currentBoard;
   }
@@ -91,7 +99,7 @@ export class BridgeTable {
       this._players.get(seat)!.startBoard(this._currentBoard);
     }
     board.start();
-    const recommendedContract = await this._contractAssigner(board);
+    const recommendedContract = await this._contractAssigner(board, this._randomGenerator);
     if (this._options.assignContract) {
       if (recommendedContract) {
         board.setContract(recommendedContract);
